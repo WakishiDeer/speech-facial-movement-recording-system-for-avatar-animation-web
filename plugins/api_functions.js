@@ -1,5 +1,5 @@
 import axios from "axios";
-import {getDateTimeCode} from "~/plugins/time_handler";
+import {getDateTimeCode, getTimeCode} from "~/plugins/time_handler";
 import {encloseStatusMessageGet, encloseStatusMessagePost} from "~/plugins/utils";
 
 axios.defaults.headers.post["Content-Type"] = "application/json";
@@ -7,13 +7,21 @@ axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
 
 export async function getUserDataJson(participant) {
   const url = "http://localhost:13000/api/loadJson";
-  await axios.get(url, {params: {participant: participant}})
+  let resData = null, statusCode = null, message = null;
+  await axios.get(url, {"params": {"participant": participant}})
     .then((res) => {
-      return encloseStatusMessageGet(res.data, res.status);
+      const ret = encloseStatusMessageGet(res.data, res.status);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
     })
     .catch((err) => {
-      return encloseStatusMessageGet({}, err.status);
+      const ret = encloseStatusMessageGet({}, err.status);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
     });
+  return {resData, statusCode, message};
 }
 
 export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = false) {

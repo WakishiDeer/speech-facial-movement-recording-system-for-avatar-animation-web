@@ -8,7 +8,7 @@
         dark
         small
         color="secondary"
-        @click="updateCalibrationMin"
+        @click="onClickCalibrationMin"
       >
         {{ audioHandler.minRmsAvg }}
         <v-icon dark>
@@ -26,7 +26,7 @@
         dark
         small
         color="secondary"
-        @click="updateCalibrationMax"
+        @click="onClickCalibrationMax"
       >
         {{ audioHandler.maxRmsAvg }}
         <v-icon dark>
@@ -37,40 +37,55 @@
   </v-col>
 </template>
 <script>
-import {updateCalibrationMax, updateCalibrationMin} from "~/plugins/audio_handler";
-import {postSaveUserDataJson, setLocalStorage, updateCalibrationData} from "~/plugins/state_handler";
+import {getCalibrationMax, getCalibrationMin} from "~/plugins/audio_handler";
+import {defineComponent, onMounted} from '@nuxtjs/composition-api'
 
-export default {
-  name: 'CalibrationControllers',
-  props: {
-    audioHandler: {},
-    stateHandler: {},
-    timeHandler: {},
-    targetJson: {},
-    userDataJson: {},
-  },
-  methods: {
-    updateCalibrationMin() {
-      updateCalibrationMin(this.audioHandler, this.stateHandler);
-      updateCalibrationData(this.targetJson, this.userDataJson, "rms_min", this.audioHandler.minRmsAvg);
-      if (this.audioHandler.calibrationCountMin === this.audioHandler.calibrationCountTotal) {
-        this.completeCalibration();
-      }
+export default defineComponent({
+    name: 'CalibrationControllers',
+    props: {
+      audioHandler: {},
+      stateHandler: {},
+      timeHandler: {},
+      userDataJson: {},
     },
-    updateCalibrationMax() {
-      updateCalibrationMax(this.audioHandler, this.stateHandler);
-      updateCalibrationData(this.targetJson, this.userDataJson, "rms_max", this.audioHandler.maxRmsAvg);
-      if (this.audioHandler.calibrationCountMax === this.audioHandler.calibrationCountTotal) {
-        this.completeCalibration();
+    setup(props, {emit}) {
+      const onClickCalibrationMin = () => {
+        const {
+          calibrationCountMin,
+          minRms,
+          minRmsAvg,
+          showMinBtn
+        } = getCalibrationMin(props.audioHandler);
+        emit("update-calibration-min", calibrationCountMin, minRms, minRmsAvg, showMinBtn);
+        if (props.audioHandler.calibrationCountMin === props.audioHandler.calibrationCountTotal) {
+          const updateTarget = "rms_min";
+          onCompletingCalibration(updateTarget, props.audioHandler.minRmsAvg);
+        }
+      };
+      const onClickCalibrationMax = () => {
+        const {
+          calibrationCountMax,
+          maxRms,
+          maxRmsAvg,
+          showMaxBtn
+        } = getCalibrationMax(props.audioHandler);
+        emit("update-calibration-max", calibrationCountMax, maxRms, maxRmsAvg, showMaxBtn);
+        if (props.audioHandler.calibrationCountMax === props.audioHandler.calibrationCountTotal) {
+          const updateTarget = "rms_max";
+          onCompletingCalibration(updateTarget, props.audioHandler.maxRmsAvg);
+        }
+      };
+      // when completing calibration, save data to local storage and to server
+      const onCompletingCalibration = (updateTarget, calibratedRmsAvg) => {
+        emit("update-calibration-user-data", updateTarget, calibratedRmsAvg);
+      };
+      return {
+        onClickCalibrationMin,
+        onClickCalibrationMax,
       }
-    },
-    completeCalibration() {
-      setLocalStorage("userDataJson", JSON.stringify(this.userDataJson));
-      postSaveUserDataJson(this.userDataJson, this.stateHandler, false);
-
     },
   }
-}
+);
 </script>
 <style>
 p {

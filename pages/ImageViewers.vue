@@ -4,7 +4,7 @@
       color="secondary"
       justify="center"
       v-if="!stateHandler.isDisplayed"
-      @click="changeVisibility">
+      @click="onClickLectureHall">
       <v-icon dark>
         mdi-eye
       </v-icon>
@@ -12,23 +12,31 @@
     <v-img
       src="/lecture_room.jpg"
       v-if="stateHandler.isDisplayed"
-      @click="changeVisibility"></v-img>
+      @click="onClickLectureHall"></v-img>
   </v-col>
 </template>
 <script>
 import {changeVisibility} from "~/plugins/state_handler";
+import {defineComponent, onMounted} from '@nuxtjs/composition-api'
 
-export default {
-  name: 'ImageViewers',
-  props: {
-    stateHandler: {},
-  },
-  methods: {
-    changeVisibility() {
-      changeVisibility(this.stateHandler);
+
+export default defineComponent({
+    name: 'ImageViewers',
+    props: {
+      stateHandler: {},
+    },
+    setup(props, {emit}) {
+      const onClickLectureHall = () => {
+        // invert visibility
+        const {isDisplayed} = changeVisibility(props.stateHandler);
+        emit("change-visibility", isDisplayed);
+      };
+      return {
+        onClickLectureHall,
+      }
     },
   }
-}
+);
 </script>
 <style>
 p {

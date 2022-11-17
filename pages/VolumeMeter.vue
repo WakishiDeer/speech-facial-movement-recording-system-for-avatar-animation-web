@@ -8,6 +8,7 @@
     </v-progress-linear>
   </v-col>
 </template>
+
 <script>
 export default {
   name: 'VolumeMeter',
@@ -17,6 +18,7 @@ export default {
   }
 }
 </script>
+
 <style>
 p {
   font-family: "UD Digi Kyokasho N-R", serif;

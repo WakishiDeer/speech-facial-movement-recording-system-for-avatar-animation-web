@@ -24,6 +24,8 @@ export default {
 
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: [
+    "~/plugins/utils.js",
+    "~/plugins/api_functions.js",
     "~/plugins/state_handler.js",
     "~/plugins/audio_handler.js",
     "~/plugins/time_handler.js",
@@ -73,5 +75,13 @@ export default {
   },
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
-  build: {},
-}
+  build: {
+    extend(config, {isDev, isClient}) {
+      // disable fs in client side
+      config.node = {
+        fs: 'empty',
+        net: 'empty'
+      }
+    }
+  },
+};

@@ -23,7 +23,7 @@ export default {
           to: '/',
         }
       ],
-      title: 'Pre-Experiment',
+      title: 'Recording with Script',
     }
   },
 }

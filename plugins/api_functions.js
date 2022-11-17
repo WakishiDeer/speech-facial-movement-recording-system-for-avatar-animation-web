@@ -46,3 +46,22 @@ export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = 
       return encloseStatusMessagePost(err.status);
     });
 }
+
+export async function postBlob(blob, extension, clipNameCandidate, stateHandler) {
+  const clipName = clipNameCandidate + getTimeCode();
+  const url = "http://localhost:13000/api/saveMedia";
+
+  let formData = new FormData();
+  formData.append("file", blob, clipName)
+  const headers = {
+    "participant": stateHandler.participant,
+    "extension": extension,
+  }
+
+  axios.post(url, formData, {
+    headers: headers
+  })
+    .then(res => {
+      console.log(res);
+    })
+}

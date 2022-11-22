@@ -10,12 +10,12 @@ export function loadRmsAvgData(userDataJson) {
   let isZero = false;
   if (isRmsZero(minRmsAvg) || isRmsZero(maxRmsAvg)) {
     // return zeros
+    isZero = true;
     return {minRmsAvg, maxRmsAvg, isZero};
-  } else if (isRmsMinMaxValid(minRmsAvg, maxRmsAvg)) {
+  } else if (!isRmsMinMaxValid(minRmsAvg, maxRmsAvg)) {
     throw new Error("Invalid RMS min/max value");
   } else {
     // return previously calibrated data
-    isZero = true;
     return {minRmsAvg, maxRmsAvg, isZero};
   }
 }
@@ -54,9 +54,11 @@ export async function setUpMic(audioHandler) {
 }
 
 export function getCalibrationMin(audioHandler) {
-  const calibrationCountMin = audioHandler.calibrationCountMin++;
+  // note that `calibrationCountMin` is already updated
+  const calibrationCountMin = audioHandler.calibrationCountMin;
   const calibrationCountTotal = audioHandler.calibrationCountTotal;
-  let minRms, minRmsAvg;
+  let minRms = 0.0;
+  let minRmsAvg = 0.0;
   // default is true
   let showMinBtn = true;
   if (calibrationCountMin < calibrationCountTotal) {
@@ -64,16 +66,18 @@ export function getCalibrationMin(audioHandler) {
     minRmsAvg += minRms;
   } else {
     // when count is over
-    minRmsAvg /= calibrationCountTotal;
+    minRmsAvg = audioHandler.minRmsAvg / calibrationCountTotal;
     showMinBtn = false;
   }
-  return {calibrationCountMin,  minRms, minRmsAvg, showMinBtn};
+  return {calibrationCountMin, minRms, minRmsAvg, showMinBtn};
 }
 
 export function getCalibrationMax(audioHandler) {
-  const calibrationCountMax = audioHandler.calibrationCountMax++;
+  // note that `calibrationCountMax` is already updated
+  const calibrationCountMax = audioHandler.calibrationCountMax;
   const calibrationCountTotal = audioHandler.calibrationCountTotal;
-  let maxRms, maxRmsAvg;
+  let maxRms = 0.0;
+  let maxRmsAvg = 0.0;
   // default is true
   let showMaxBtn = true;
   if (calibrationCountMax < calibrationCountTotal) {
@@ -81,13 +85,13 @@ export function getCalibrationMax(audioHandler) {
     maxRmsAvg += maxRms;
   } else {
     // over
-    maxRmsAvg /= calibrationCountTotal;
+    maxRmsAvg = audioHandler.maxRmsAvg / calibrationCountTotal;
     showMaxBtn = false;
   }
-  return {calibrationCountMax,  maxRms, maxRmsAvg, showMaxBtn};
+  return {calibrationCountMax, maxRms, maxRmsAvg, showMaxBtn};
 }
 
-export function doAnimation(audioHandler, stateHandler) {
+export function doAnimation(stateHandler, audioHandler) {
   let isAnimated = false;
   let fftSize = audioHandler.analyzer.fftSize;
   if (!stateHandler.isAnimated) {

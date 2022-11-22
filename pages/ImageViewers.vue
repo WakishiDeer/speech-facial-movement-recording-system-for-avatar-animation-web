@@ -17,7 +17,7 @@
 </template>
 <script>
 import {changeVisibility} from "~/plugins/state_handler";
-import {defineComponent, onMounted} from '@nuxtjs/composition-api'
+import {defineComponent} from '@nuxtjs/composition-api'
 
 
 export default defineComponent({
@@ -28,7 +28,7 @@ export default defineComponent({
     setup(props, {emit}) {
       const onClickLectureHall = () => {
         // invert visibility
-        const {isDisplayed} = changeVisibility(props.stateHandler);
+        const isDisplayed = changeVisibility(props.stateHandler);
         emit("change-visibility", isDisplayed);
       };
       return {

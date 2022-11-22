@@ -19,8 +19,7 @@ export async function setUpMediaVideo(videoHandler) {
     video: {
       width: 1920, height: 1080,
       frameRate: {
-        min: 60,
-        ideal: 60,
+        min: 30,
         max: 60,
       }
     }
@@ -41,7 +40,7 @@ export async function setUpMediaVideo(videoHandler) {
     .catch(err => {
       console.error(err);
     });
-  return {videoStream, mimeType: videoMimeType, extension: videoExtension, videoRecorder};
+  return {videoStream, videoMimeType, videoExtension, videoRecorder};
 }
 
 

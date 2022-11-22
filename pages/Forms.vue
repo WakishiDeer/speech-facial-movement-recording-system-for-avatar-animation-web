@@ -10,10 +10,6 @@
   </v-col>
 </template>
 <script>
-import {
-  getCurrentScriptNoContent,
-  getUpdatedScriptLength,
-} from "~/plugins/state_handler";
 import {defineComponent} from '@nuxtjs/composition-api'
 
 
@@ -40,18 +36,7 @@ export default defineComponent({
         emit("update-condition", condition);
       };
       const onUpdateTask = (task) => {
-        // update task
         emit("update-task", task);
-        // update length related to script
-        const {scriptLength, slideLength} = getUpdatedScriptLength(props.stateHandler, props.userDataJson);
-        emit("update-script-length", scriptLength, slideLength);
-        // initialize script and slide indices
-        const initialScriptIndex = 0;
-        const initialSlideIndex = 0;
-        emit("initialize-script", initialScriptIndex, initialSlideIndex);
-        // get and update current script (both should be initialized)
-        const {currentScriptNo, currentScriptContent} = getCurrentScriptNoContent(props.stateHandler, props.userDataJson);
-        emit("update-script-no-content", currentScriptNo, currentScriptContent);
       }
       return {
         rules,

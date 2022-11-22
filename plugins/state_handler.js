@@ -34,8 +34,9 @@ export function getCurrentScriptNoContent(stateHandler, userDataJson) {
   const currentSlideIndex = getSlideIndex(stateHandler);
   const condition = getCondition(stateHandler);
   const task = getTask(stateHandler);
-  const currentScriptNo = userDataJson[task][condition]["no"][currentScriptIndex];
-  const currentScriptContent = userDataJson[task][condition]["content"][currentSlideIndex];
+  const currentScriptIndex = getScriptIndex(stateHandler);
+  const currentScriptNo = userDataJson["data"][task][condition]["no"][currentScriptIndex];
+  const currentScriptContent = userDataJson["data"][task][condition]["content"][currentScriptIndex];
   return {currentScriptNo, currentScriptContent};
 }
 
@@ -49,9 +50,12 @@ export function getTask(stateHandler) {
 
 export function getUpdatedScriptLength(stateHandler, userDataJson) {
   const task = getTask(stateHandler);
-  const scriptLength = userDataJson[task]["normal"]["no"].length;
-  const slideLength = userDataJson[task]["normal"]["no"].length + 2;
-  return {scriptLength, slideLength};
+  return userDataJson["data"][task]["normal"]["no"].length;
+}
+
+export function getSlideLength(stateHandler, userDataJson) {
+  const task = getTask(stateHandler);
+  return userDataJson["data"][task]["normal"]["no"].length + 2;
 }
 
 export function goToNextSlide(event, on) {

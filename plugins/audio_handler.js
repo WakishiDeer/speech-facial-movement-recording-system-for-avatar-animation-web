@@ -5,8 +5,8 @@ import Vue from "vue";
 
 export function loadRmsAvgData(userDataJson) {
   // if having previous data, just take over
-  const minRmsAvg = userDataJson["rms_min"];
-  const maxRmsAvg = userDataJson["rms_max"];
+  const minRmsAvg = userDataJson["data"]["rms_min"];
+  const maxRmsAvg = userDataJson["data"]["rms_max"];
   let isZero = false;
   if (isRmsZero(minRmsAvg) || isRmsZero(maxRmsAvg)) {
     // return zeros

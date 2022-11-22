@@ -22,6 +22,9 @@ export async function getUserDataJson(participant) {
 }
 
 export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = false) {
+  // first, remove `data` from userDataJson
+  const userDataJsonWithoutData = userDataJson["data"];
+
   // the folder to be saved will be changed according to `isTemp`
   let url = "";
   if (isTemp) {
@@ -35,12 +38,12 @@ export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = 
     "Content-Type": "application/json", "participant": stateHandler.participant, "date-time": getDateTimeCode(),
   };
 
-  return await axios.post(url, userDataJson, {headers: headers})
+  return await axios.post(url, userDataJsonWithoutData, {headers: headers})
     .then((res) => {
       return encloseStatusMessagePost(res.status);
     })
     .catch((err) => {
-      return encloseStatusMessagePost(err.status);
+      return encloseStatusMessagePost(err.response.status);
     });
 }
 

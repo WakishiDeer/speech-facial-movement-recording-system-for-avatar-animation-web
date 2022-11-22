@@ -43,7 +43,7 @@ export default defineComponent({
       waveHandler: {},
     },
     setup(props, {emit}) {
-      const onMicBtnClicked = () => {
+      const onMicBtnClicked = async () => {
         // initialize stream audio
         const {
           stream,
@@ -52,7 +52,7 @@ export default defineComponent({
           showMicBtn,
           showMinBtn,
           showMaxBtn
-        } = setUpMic(props.audioHandler, props.stateHandler);
+        } = await setUpMic(props.audioHandler);
         // assign variables to state handler in parent component
         emit("update-mic-params", stream, input, analyzer, showMicBtn, showMinBtn, showMaxBtn);
         // start indicator animation in parent component
@@ -64,7 +64,7 @@ export default defineComponent({
         const {wavStream, wavMimeType, wavExtension, wavRecorder} = await setUpMediaWave(props.waveHandler);
         emit("update-media-params", videoStream, videoMimeType, videoExtension, videoRecorder,
           wavStream, wavMimeType, wavExtension, wavRecorder);
-      };
+      }
 
       return {
         onMicBtnClicked,

@@ -10,6 +10,31 @@ export function consoleReactive(obj) {
   }
 }
 
+export function checkUserDataJsonEmpty(userDataJson) {
+  if (userDataJson === null) {
+    throw new Error("userDataJson is null");
+  }
+  if (userDataJson === undefined) {
+    throw new Error("userDataJson is undefined");
+  }
+}
+
+export function checkUserDataJsonValid(userDataJson) {
+  try {
+    checkUserDataJsonEmpty(userDataJson);
+  } catch (e) {
+    throw e;
+  }
+  // if `data` is not contained
+  if (userDataJson["data"] === undefined) {
+    throw new Error("userDataJson.data is undefined");
+  }
+  // if no data is contained in `data`
+  if (Object.keys(userDataJson["data"]).length === 0) {
+    throw new Error("userDataJson.data is empty");
+  }
+}
+
 export function isStatusCode200(statusCode) {
   // if status code is 200, return true. Otherwise, return false
   return statusCode === 200;

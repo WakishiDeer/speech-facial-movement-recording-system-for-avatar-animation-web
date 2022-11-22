@@ -36,20 +36,25 @@
     </v-row>
   </v-col>
 </template>
+
 <script>
 import {getCalibrationMax, getCalibrationMin} from "~/plugins/audio_handler";
-import {defineComponent, onMounted} from '@nuxtjs/composition-api'
+import {defineComponent} from '@nuxtjs/composition-api'
 
 export default defineComponent({
     name: 'CalibrationControllers',
     props: {
       audioHandler: {},
       stateHandler: {},
-      timeHandler: {},
-      userDataJson: {},
     },
     setup(props, {emit}) {
+      // when completing calibration, save data to local storage and to server
+      const onCompletingCalibration = (updateTarget, calibratedRmsAvg) => {
+        emit("update-calibration-user-data", updateTarget, calibratedRmsAvg);
+      };
       const onClickCalibrationMin = () => {
+        // first, update calibration count
+        emit("update-calibration-count-min");
         const {
           calibrationCountMin,
           minRms,
@@ -59,10 +64,12 @@ export default defineComponent({
         emit("update-calibration-min", calibrationCountMin, minRms, minRmsAvg, showMinBtn);
         if (props.audioHandler.calibrationCountMin === props.audioHandler.calibrationCountTotal) {
           const updateTarget = "rms_min";
-          onCompletingCalibration(updateTarget, props.audioHandler.minRmsAvg);
+          onCompletingCalibration(updateTarget, minRmsAvg);
         }
       };
       const onClickCalibrationMax = () => {
+        // first, update calibration count
+        emit("update-calibration-count-max");
         const {
           calibrationCountMax,
           maxRms,
@@ -72,13 +79,10 @@ export default defineComponent({
         emit("update-calibration-max", calibrationCountMax, maxRms, maxRmsAvg, showMaxBtn);
         if (props.audioHandler.calibrationCountMax === props.audioHandler.calibrationCountTotal) {
           const updateTarget = "rms_max";
-          onCompletingCalibration(updateTarget, props.audioHandler.maxRmsAvg);
+          onCompletingCalibration(updateTarget, maxRmsAvg);
         }
       };
-      // when completing calibration, save data to local storage and to server
-      const onCompletingCalibration = (updateTarget, calibratedRmsAvg) => {
-        emit("update-calibration-user-data", updateTarget, calibratedRmsAvg);
-      };
+
       return {
         onClickCalibrationMin,
         onClickCalibrationMax,

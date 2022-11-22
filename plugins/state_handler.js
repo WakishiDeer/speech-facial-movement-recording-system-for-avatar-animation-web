@@ -1,21 +1,38 @@
 import {getUserDataJson, postSaveUserDataJson} from "~/plugins/api_functions";
-import Vue, {readonly} from "vue";
+import {checkUserDataJsonValid} from "~/plugins/utils";
+import Vue from "vue";
 
 
 export async function loadUserDataJson(participant) {
-  const {resData, statusCode, message} = await getUserDataJson(participant);
-  return resData;
+  try {
+    const {resData, statusCode, message} = await getUserDataJson(participant);
+    return resData;
+  } catch (err) {
+    throw err;
+  }
 }
 
 export function saveUserDataJson(userDataJson, stateHandler) {
-  // save userDataJson
+  try {
+    checkUserDataJsonValid(userDataJson);
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+
   const isTemp = false;
   const {statusCode, message} = postSaveUserDataJson(userDataJson, stateHandler, isTemp);
   console.log("saveUserDataJson: " + message);
 }
 
 export function saveUserDataJsonTemp(userDataJson, stateHandler) {
-  // save userDataJson
+  try {
+    checkUserDataJsonValid(userDataJson);
+  } catch (err) {
+    console.log(err);
+    return;
+  }
+
   const isTemp = true;
   const {statusCode, message} = postSaveUserDataJson(userDataJson, stateHandler, isTemp);
   console.log("saveUserDataJsonTemp: " + message);
@@ -30,8 +47,6 @@ export function getSlideIndex(stateHandler) {
 }
 
 export function getCurrentScriptNoContent(stateHandler, userDataJson) {
-  const currentScriptIndex = getScriptIndex(stateHandler);
-  const currentSlideIndex = getSlideIndex(stateHandler);
   const condition = getCondition(stateHandler);
   const task = getTask(stateHandler);
   const currentScriptIndex = getScriptIndex(stateHandler);
@@ -48,7 +63,7 @@ export function getTask(stateHandler) {
   return stateHandler.selectTasks.state;
 }
 
-export function getUpdatedScriptLength(stateHandler, userDataJson) {
+export function getScriptLength(stateHandler, userDataJson) {
   const task = getTask(stateHandler);
   return userDataJson["data"][task]["normal"]["no"].length;
 }

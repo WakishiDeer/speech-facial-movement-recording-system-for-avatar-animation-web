@@ -112,9 +112,17 @@ export default defineComponent({
         emit("on-sleep", true);
       };
 
+      // compute progress bar value
+      const progressBarValue = computed(() => {
+        const idx = getScriptIndex(props.stateHandler) + 1;
+        const len = getScriptLength(props.stateHandler, props.userDataJson);
+        return (idx / len) * 100;
+      });
+
       return {
         onPrev,
         onNext,
+        progressBarValue,
       }
     }
   }

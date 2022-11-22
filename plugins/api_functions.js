@@ -7,19 +7,16 @@ axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
 
 export async function getUserDataJson(participant) {
   const url = "http://localhost:13000/api/loadJson";
-  let resData = null, statusCode = null, message = null;
+  let resData, statusCode, message;
   await axios.get(url, {"params": {"participant": participant}})
     .then((res) => {
-      const ret = encloseStatusMessageGet(res.data, res.status);
+      const ret = encloseStatusMessageGet(res);
       resData = ret.resData;
       statusCode = ret.statusCode;
       message = ret.message;
     })
     .catch((err) => {
-      const ret = encloseStatusMessageGet({}, err.status);
-      resData = ret.resData;
-      statusCode = ret.statusCode;
-      message = ret.message;
+      throw err;
     });
   return {resData, statusCode, message};
 }

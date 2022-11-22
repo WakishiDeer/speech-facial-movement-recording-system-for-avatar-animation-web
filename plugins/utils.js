@@ -40,12 +40,16 @@ export function isStatusCode200(statusCode) {
   return statusCode === 200;
 }
 
-export function encloseStatusMessageGet(resData, statusCode) {
+export function encloseStatusMessageGet(res) {
+  const resData = res.data;
+  const statusCode = res.status;
+  const statusText = res.statusText;
   let message = "";
   if (isStatusCode200(statusCode)) {
-    message = "GET - Success with status code: " + statusCode;
+    message = "GET - Success with status code: " + statusCode + " " + statusText;
   } else {
-    message = "GET - Error with status code: " + statusCode;
+    message = "GET - Error with status code: " + statusCode + " " + statusText;
+    throw new Error(message);
   }
   return {resData, statusCode, message};
 }

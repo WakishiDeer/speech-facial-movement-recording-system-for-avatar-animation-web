@@ -40,28 +40,25 @@
         </v-card>
       </v-window-item>
 
-      {{ userDataJson }}
-      <!-- todo: make window-item reactive -->
-      <!--      <v-window-item-->
-      <!--        v-for="(content, idx) in userDataJson[stateHandler.selectTasks.state][stateHandler.selectConditions.state]['content']"-->
-      <!--        :key="idx">-->
-      <!--        <v-card color="gray" height="500">-->
-      <!--          <v-row align="center" justify="center" class="fill-height">-->
-      <!--            <div class="pa-16">-->
-      <!--              <p style="font-size: 1rem;"-->
-      <!--                 class="white&#45;&#45;text">-->
-      <!--                {{ idx + 1 }}/{{ stateHandler.scriptLength }}-->
-      <!--              </p>-->
-      <!--              <p style="font-size: 2.5rem;"-->
-      <!--                 class="white&#45;&#45;text"-->
-      <!--                 v-html="stateHandler.currentScript">-->
-      <!--              </p>-->
-      <!--            </div>-->
-      <!--          </v-row>-->
-      <!--          <v-progress-linear :value="idx + 1" color="primary" height="25">-->
-      <!--          </v-progress-linear>-->
-      <!--        </v-card>-->
-      <!--      </v-window-item>-->
+      <v-window-item
+        v-for="idx in stateHandler.scriptLength" :key="idx">
+        <v-card color="gray" height="500">
+          <v-row align="center" justify="center" class="fill-height">
+            <div class="pa-16">
+              <p style="font-size: 1rem;"
+                 class="white--text">
+                {{ idx }}/{{ stateHandler.scriptLength }}
+              </p>
+              <p style="font-size: 2.5rem;"
+                 class="white--text"
+                 v-html="stateHandler.currentScriptContent">
+              </p>
+            </div>
+          </v-row>
+          <v-progress-linear :value="progressBarValue" color="primary" height="25">
+          </v-progress-linear>
+        </v-card>
+      </v-window-item>
 
       <v-window-item>
         <v-card color="gray" height="500">
@@ -79,9 +76,8 @@
 </template>
 
 <script>
-import {defineComponent, onMounted, toRef, watchEffect} from '@nuxtjs/composition-api'
-import {isReactive, toRefs} from "vue";
-
+import {computed, defineComponent} from '@nuxtjs/composition-api'
+import {getScriptIndex, getScriptLength} from "~/plugins/state_handler";
 
 export default defineComponent({
     name: 'ScriptControllers',
@@ -90,8 +86,6 @@ export default defineComponent({
       userDataJson: {},
     },
     setup(props, {emit}) {
-      onMounted(() => {
-      });
       const onPrev = async (event, on) => {
         await sleep(props.stateHandler.sleepTimeMs);
         emit("on-prev", event, on);

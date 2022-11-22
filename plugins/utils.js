@@ -42,3 +42,42 @@ export function isRmsMinMaxValid(rmsMin, rmsMax) {
 export function isRmsZero(rms) {
   return rms === 0;
 }
+
+export function checkExclusive(isNext, isPrev) {
+  if ((isNext && isPrev) || (!isNext && !isPrev)) {
+    throw new Error("isNext and isPrev are not exclusive");
+  }
+}
+
+export function isFirstSlide(updatedSlideIndex, isNext, isPrev) {
+  try {
+    checkExclusive(isNext, isPrev);
+  } catch (err) {
+    console.log(err);
+  }
+  // slide 0 -> 1
+  if (isNext) {
+    return updatedSlideIndex === 1;
+  }
+  // slide 1 -> 0
+  if (isPrev) {
+    return updatedSlideIndex === 0;
+  }
+}
+
+export function isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength) {
+  try {
+    checkExclusive(isNext, isPrev);
+  } catch (err) {
+    console.log(err);
+  }
+
+  // slide slideLength - 2 -> slideLength - 1
+  if (isNext) {
+    return updatedSlideIndex === slideLength - 1;
+  }
+  // slide slideLength - 1 -> slideLength - 2
+  if (isPrev) {
+    return updatedSlideIndex === slideLength - 2;
+  }
+}

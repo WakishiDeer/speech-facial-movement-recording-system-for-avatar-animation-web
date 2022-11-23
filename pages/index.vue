@@ -1,16 +1,15 @@
 <template>
   <v-app>
     <v-main>
-      <v-container fluid fill-height class="mx-auto">
+      <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
                  @update-id="updateID" @update-condition="updateCondition"
-                 @initialize-script="updateScriptSlideIndex" @update-script-no-content="updateScriptNoContent"
-                 @update-script-length="updateScriptSlideLength" @update-task="updateTask"/>
+                 @update-task="updateTask"/>
 
           <MediaControllers :state-handler="stateHandler" :audio-handler="audioHandler" :video-handler="videoHandler"
                             :wave-handler="waveHandler"
-                            @update-mic-param="updateMicParams" @start-animation="startAnimation"
+                            @update-mic-params="updateMicParams" @start-animation="startAnimation"
                             @update-media-params="updateMediaParams"/>
 
           <v-spacer/>
@@ -19,7 +18,8 @@
                         @change-visibility="changeImageVisibility"/>
 
           <CalibrationControllers :audio-handler="audioHandler" :state-handler="stateHandler"
-                                  :time-handler="timeHandler" :user-data-json="userDataJson"
+                                  @update-calibration-count-min="updateCalibrationCountMin"
+                                  @update-calibration-count-max="updateCalibrationCountMax"
                                   @update-calibration-min="updateCalibrationMin"
                                   @update-calibration-max="updateCalibrationMax"
                                   @update-calibration-user-data="updateCalibrationUserData"/>
@@ -32,7 +32,8 @@
         </v-row>
 
         <v-row>
-          <ScriptControllers :state-handler="stateHandler" :user-data-json="userDataJson"
+          <ScriptControllers :key="rerenderNum"
+                             :state-handler="stateHandler" :user-data-json="userDataJson"
                              @on-sleep="changeTransitionBtnVisibility"
                              @on-next="updateSlideNext" @on-prev="updateSlidePrev"/>
         </v-row>

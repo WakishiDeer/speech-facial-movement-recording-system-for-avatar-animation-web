@@ -1,29 +1,11 @@
-import {getTimeCode} from "~/plugins/time_handler";
-import axios from "axios";
-
-axios.defaults.headers.post["Content-Type"] = "application/json";
-axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';
-
-async function downloadBlob(blob, extension, clipNameCandidate, stateHandler) {
-  const clipName = clipNameCandidate + getTimeCode();
-  const url = "http://localhost:13000/api/saveMedia";
-
-  let formData = new FormData();
-  formData.append("file", blob, clipName)
-  const headers = {
-    "participant": stateHandler.participant,
-    "extension": extension,
-  }
-
-  axios.post(url, formData, {
-    headers: headers
-  })
-    .then(res => {
-      console.log(res);
-    })
-}
+import {postBlob} from "./api_functions";
 
 export async function setUpMediaVideo(videoHandler) {
+  // data to be returned
+  let videoStream = null;
+  let videoMimeType = null;
+  let videoExtension = null;
+  let videoRecorder = null;
   // audio constrains
   const audioConstrains = {
     echoCancellation: false,
@@ -37,21 +19,20 @@ export async function setUpMediaVideo(videoHandler) {
     video: {
       width: 1920, height: 1080,
       frameRate: {
-        min: 60,
-        ideal: 60,
+        min: 30,
         max: 60,
       }
     }
   })
     .then(stream => {
       import("recordrtc/RecordRTC");
-      videoHandler.stream = stream;
-      videoHandler.mimeType = "video/x-matroska;codecs=avc1";
-      videoHandler.extension = ".mkv";
-      videoHandler.videoRecorder = RecordRTC(videoHandler.stream, {
+      videoStream = stream;
+      videoMimeType = "video/x-matroska;codecs=avc1";
+      videoExtension = ".mkv";
+      videoRecorder = RecordRTC(videoStream, {
         type: "video",
         disableLogs: true,
-        mimeType: videoHandler.mimeType,
+        mimeType: videoMimeType,
         audioBitsPerSecond: 128000,
         videoBitsPerSecond: 6400000,
       });
@@ -59,24 +40,16 @@ export async function setUpMediaVideo(videoHandler) {
     .catch(err => {
       console.error(err);
     });
+  return {videoStream, videoMimeType, videoExtension, videoRecorder};
 }
 
-export function stopVideoRecorder(videoHandler, stateHandler, timeHandler) {
-  videoHandler.clipNameCandidate = stateHandler.participant + "!" +
-    stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
-  videoHandler.videoRecorder.stopRecording(stopRecordingCallback);
-
-  function stopRecordingCallback() {
-    const blob = videoHandler.videoRecorder.getBlob();
-    const no = stateHandler.currentScriptNo;
-    downloadBlob(blob, videoHandler.extension, videoHandler.clipNameCandidate, stateHandler)
-      .then(r => {
-        console.log("Uploaded: " + no);
-      });
-  }
-}
 
 export async function setUpMediaWave(waveHandler) {
+  // data to be returned
+  let wavStream = null;
+  let wavMimeType = null;
+  let wavExtension = null;
+  let wavRecorder = null;
   // audio constrains
   const audioConstrains = {
     echoCancellation: false,
@@ -91,10 +64,10 @@ export async function setUpMediaWave(waveHandler) {
     video: false,
   })
     .then(stream => {
-      waveHandler.stream = stream;
-      waveHandler.mimeType = "audio/wav";
-      waveHandler.extension = ".wav";
-      waveHandler.waveRecorder = RecordRTC(waveHandler.stream, {
+      wavStream = stream;
+      wavMimeType = "audio/wav";
+      wavExtension = ".wav";
+      wavRecorder = RecordRTC(wavStream, {
         type: "audio",
         disableLogs: true,
         recorderType: RecordRTC.StereoAudioRecorder,
@@ -102,14 +75,30 @@ export async function setUpMediaWave(waveHandler) {
         audioBitsPerSecond: 3200000,
         desiredSampRate: 48000,
         bufferSize: 16384,
-        mimeType: waveHandler.mimeType,
+        mimeType: wavMimeType,
       })
     });
+  return {wavStream, wavMimeType, wavExtension, wavRecorder};
 }
 
 export function startVideoRecorder(videoHandler) {
   // videoHandler.videoRecorder.reset();
   videoHandler.videoRecorder.startRecording();
+}
+
+export function stopVideoRecorder(videoHandler, stateHandler) {
+  videoHandler.clipNameCandidate = stateHandler.participant + "!" +
+    stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
+  videoHandler.videoRecorder.stopRecording(stopRecordingCallback);
+
+  function stopRecordingCallback() {
+    const blob = videoHandler.videoRecorder.getBlob();
+    const no = stateHandler.currentScriptNo;
+    postBlob(blob, videoHandler.extension, videoHandler.clipNameCandidate, stateHandler)
+      .then(() => {
+        console.log("Uploaded: " + no);
+      });
+  }
 }
 
 export function startWaveRecorder(waveHandler) {
@@ -125,9 +114,10 @@ export async function stopWaveRecorder(waveHandler, stateHandler) {
   function stopRecordingCallback() {
     const blob = waveHandler.waveRecorder.getBlob();
     const no = stateHandler.currentScriptNo;
-    downloadBlob(blob, waveHandler.extension, waveHandler.clipNameCandidate, stateHandler)
+    postBlob(blob, waveHandler.extension, waveHandler.clipNameCandidate, stateHandler)
       .then(r => {
         console.log("Uploaded: " + no);
       });
   }
 }
+

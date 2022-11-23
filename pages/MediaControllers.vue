@@ -7,7 +7,7 @@
       dark
       small
       color="primary"
-      @click="setUpMic"
+      @click="onMicBtnClicked"
     >
       <v-icon dark>
         mdi-microphone
@@ -20,7 +20,7 @@
       dark
       small
       color="primary"
-      @click="setUpMedia"
+      @click="onVideoBtnClicked"
     >
       <v-icon>
         mdi-video
@@ -31,32 +31,48 @@
 <script>
 import {setUpMic} from "~/plugins/audio_handler";
 import {setUpMediaVideo, setUpMediaWave} from "~/plugins/media_stream_recorder";
+import {defineComponent, onMounted} from '@nuxtjs/composition-api'
 
-export default {
-  name: 'MediaControllers',
-  props: {
-    stateHandler: {},
-    audioHandler: {},
-    videoHandler: {},
-    waveHandler: {},
-    timeHandler: {},
-  },
-  methods: {
-    // for audio handler
-    setUpMic() {
-      setUpMic(this.audioHandler, this.stateHandler);
+
+export default defineComponent({
+    name: 'MediaControllers',
+    props: {
+      stateHandler: {},
+      audioHandler: {},
+      videoHandler: {},
+      waveHandler: {},
     },
-    // for video handler
-    async setUpMedia() {
-      await setUpMediaVideo(this.videoHandler);
-      await setUpMediaWave(this.waveHandler);
-      // disable if both streams have been set
-      if (this.videoHandler.stream !== null && this.waveHandler.stream !== null) {
-        this.stateHandler.showVideoBtn = false;
+    setup(props, {emit}) {
+      const onMicBtnClicked = async () => {
+        // initialize stream audio
+        const {
+          stream,
+          input,
+          analyzer,
+          showMicBtn,
+          showMinBtn,
+          showMaxBtn
+        } = await setUpMic(props.audioHandler);
+        // assign variables to state handler in parent component
+        emit("update-mic-params", stream, input, analyzer, showMicBtn, showMinBtn, showMaxBtn);
+        // start indicator animation in parent component
+        emit("start-animation");
+      };
+      // set up media recorder
+      const onVideoBtnClicked = async () => {
+        const {videoStream, videoMimeType, videoExtension, videoRecorder} = await setUpMediaVideo(props.videoHandler);
+        const {wavStream, wavMimeType, wavExtension, wavRecorder} = await setUpMediaWave(props.waveHandler);
+        emit("update-media-params", videoStream, videoMimeType, videoExtension, videoRecorder,
+          wavStream, wavMimeType, wavExtension, wavRecorder);
+      }
+
+      return {
+        onMicBtnClicked,
+        onVideoBtnClicked
       }
     },
   }
-}
+);
 </script>
 <style>
 p {

@@ -39,7 +39,7 @@ app.use(bodyParser.json({
 }));
 
 app.listen(port, () => {
-  console.log("Start listening JSON API middleware...");
+  console.log("Start listening...");
 });
 
 async function writeJsonFile(folderPath, path, req) {
@@ -60,26 +60,25 @@ app.post("/api/saveJson", async (req, res) => {
     const path = folderPath + "data_" + participant + ".json";
 
     await writeJsonFile(folderPath, path, req);
-    res.send("User data has been saved...: " + JSON.stringify(req.body));
+    res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
     console.error(err);
-    res.send("error");
+    res.status(500).send("error");
   }
 });
 
 app.post("/api/saveJsonTemp", async (req, res) => {
   try {
     const participant = req.headers.participant;
-    console.log(req.headers["date-time"]);
     const dateTime = req.headers["date-time"];
     const folderPath = "./assets/user_data/" + participant + "/tmp/";
     const path = folderPath + "data_" + participant + "_" + dateTime + ".json";
 
     await writeJsonFile(folderPath, path, req);
-    res.send("User data has been saved...: " + JSON.stringify(req.body));
+    res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
     console.error(err);
-    res.send("error");
+    res.status(500).send("error");
   }
 })
 
@@ -95,17 +94,28 @@ app.get("/api/loadJson", async (req, res) => {
     }
 
     const userData = fs.readFileSync(path, "utf-8");
-    res.json(JSON.parse(userData));
+    // if valid data, return it as success
+    res.status(200).json(JSON.parse(userData));
     console.log("User data has been sent to client");
   } catch (err) {
     console.error(err);
-    res.json(JSON.parse("{}"));
+    // if error and just not existing, return empty data as status
+    if (err.code === "ENOENT") {
+      res.status(204).json(JSON.parse("{}"));
+    } else {
+      res.status(500).send("error");
+    }
   }
 });
 
 // use `multer` to save "multipart/from-data"
 app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
-  res.send("Media has been saved successfully...");
+  try {
+    res.send("Media has been saved successfully...");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
 });
 
 

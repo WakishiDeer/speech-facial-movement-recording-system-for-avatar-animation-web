@@ -2,23 +2,19 @@ const app = require("express")();
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
+const path = require("path");
 const multer = require("multer");
 
 const port = 13000;
+const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
 // multipart setting
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     // make dir if not existing
-    const participant = req.headers.participant;
-    const folderPath = "./assets/user_data/" + participant;
-    if (!fs.existsSync(folderPath)) {
-      await fs.promises.mkdir(folderPath, {recursive: true})
-        .then(res => {
-          console.log("Directory has been made: " + res);
-        });
-    }
+    const participant = checkGetParticipant(req);
+    const folderPath = getUserDataDirPath(userDataRootPath, participant);
     // callback
-    cb(null, "./assets/user_data/" + participant + "/");
+    cb(null, folderPath);
   },
   filename: (req, file, cb) => {
     // callback
@@ -42,24 +38,44 @@ app.listen(port, () => {
   console.log("Start listening...");
 });
 
-async function writeJsonFile(folderPath, path, req) {
-  // make dir at first time
-  if (!fs.existsSync(folderPath)) {
-    await fs.promises.mkdir(folderPath, {recursive: true});
+function checkGetParticipant(req) {
+  const participant = req.query.participant;
+  if (participant === undefined) {
+    throw Error("Participant is not specified.");
   }
+  return participant;
+}
 
+function getUserDataJsonPath(userDataRootPath, participant, isTemp = false) {
+  const folderPath = getUserDataDirPath(userDataRootPath, participant, isTemp);
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, {recursive: true});
+  }
+  return path.join(folderPath, "data_" + participant + ".json");
+}
+
+function getUserDataDirPath(userDataRootPath, participant, isTemp) {
+  let folderPath;
+  if (isTemp) {
+    folderPath = path.join(userDataRootPath, participant, "tmp");
+  } else {
+    folderPath = path.join(userDataRootPath, participant);
+  }
+  return folderPath;
+}
+
+async function writeJsonFile(filePath, req) {
   // handle saving json data
-  fs.writeFileSync(path, JSON.stringify(req.body));
-  console.log("User data has been saved at: " + path);
+  fs.writeFileSync(filePath, JSON.stringify(req.body));
+  console.log("User data has been saved at: " + filePath);
 }
 
 app.post("/api/saveJson", async (req, res) => {
   try {
-    const participant = req.headers.participant;
-    const folderPath = "./assets/user_data/" + participant + "/";
-    const path = folderPath + "data_" + participant + ".json";
+    const participant = checkGetParticipant(req);
+    const filePath = getUserDataJsonPath(userDataRootPath, participant);
 
-    await writeJsonFile(folderPath, path, req);
+    await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
     console.error(err);
@@ -69,12 +85,11 @@ app.post("/api/saveJson", async (req, res) => {
 
 app.post("/api/saveJsonTemp", async (req, res) => {
   try {
-    const participant = req.headers.participant;
+    const participant = checkGetParticipant(req);
     const dateTime = req.headers["date-time"];
-    const folderPath = "./assets/user_data/" + participant + "/tmp/";
-    const path = folderPath + "data_" + participant + "_" + dateTime + ".json";
+    const filePath = getUserDataJsonPath(userDataRootPath, participant, true);
 
-    await writeJsonFile(folderPath, path, req);
+    await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
     console.error(err);
@@ -84,16 +99,10 @@ app.post("/api/saveJsonTemp", async (req, res) => {
 
 app.get("/api/loadJson", async (req, res) => {
   try {
-    const participant = req.query.participant;
-    const folderPath = "./assets/user_data/" + participant + "/";
-    const path = folderPath + "data_" + participant + ".json";
+    const participant = checkGetParticipant(req);
+    const filePath = getUserDataJsonPath(userDataRootPath, participant);
 
-    // make dir at first time
-    if (!fs.existsSync(folderPath)) {
-      await fs.promises.mkdir(folderPath, {recursive: true});
-    }
-
-    const userData = fs.readFileSync(path, "utf-8");
+    const userData = fs.readFileSync(filePath, "utf-8");
     // if valid data, return it as success
     res.status(200).json(JSON.parse(userData));
     console.log("User data has been sent to client");

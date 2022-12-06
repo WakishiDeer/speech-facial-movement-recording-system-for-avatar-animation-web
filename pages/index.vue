@@ -4,7 +4,7 @@
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
-                 @update-id="updateID" @update-ios-ip="updateIosIP"
+                 @update-id="updateID" @update-ios-ip="updateIosIP" @update-server-ip="updateServerIP"
                  @update-condition="updateCondition"
                  @update-task="updateTask"/>
 
@@ -66,7 +66,7 @@ import {
   getSlideLength,
   getScriptLength,
   saveUserDataJsonTemp,
-  sendIosIP,
+  sendIosIP, loadServerIPJson, sendServerIP,
 } from "~/plugins/state_handler";
 import Forms from "~/pages/Forms";
 import MediaControllers from "~/pages/MediaControllers";
@@ -83,7 +83,7 @@ import {
 } from "~/plugins/media_stream_recorder";
 import {defineComponent, onBeforeMount, watch} from '@nuxtjs/composition-api'
 import {getTimeCode} from "~/plugins/time_handler";
-import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4} from "~/plugins/utils";
+import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4, makeServerIPList} from "~/plugins/utils";
 
 
 export default defineComponent({
@@ -122,6 +122,7 @@ export default defineComponent({
         // osc
         iosIP: "127.0.0.1",
         serverIP: "127.0.0.1",
+        serverIPList: ["127.0.0.1"],
       });
       const timeHandler = reactive({
         hour: 0,
@@ -187,6 +188,15 @@ export default defineComponent({
           const localStorage = window.localStorage;
           setLocalStorage(localStorage, "iosIP", iosIP);
           sendIosIP(stateHandler.iosIP);
+        }
+      };
+
+      const updateServerIP = (serverIP) => {
+        if (isValidIPv4(serverIP)) {
+          stateHandler.serverIP = serverIP;
+          const localStorage = window.localStorage;
+          setLocalStorage(localStorage, "serverIP", serverIP);
+          sendServerIP(stateHandler.serverIP);
         }
       };
 
@@ -462,6 +472,15 @@ export default defineComponent({
           console.error(err);
         }
 
+        // load server's available IP addresses
+        try {
+          const serverIPJson = await loadServerIPJson()
+          stateHandler.serverIPList = makeServerIPList(serverIPJson);
+          console.log(stateHandler.serverIPList);
+        } catch (err) {
+          console.error(err);
+        }
+
         // initialize length of scripts
         const scriptLength = getScriptLength(stateHandler, userDataJson);
         const slideLength = getSlideLength(stateHandler, userDataJson);
@@ -528,6 +547,7 @@ export default defineComponent({
         rerenderNum,
         updateID,
         updateIosIP,
+        updateServerIP,
         updateCondition,
         updateTask,
         updateMicParams,

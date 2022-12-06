@@ -160,7 +160,7 @@ appApi.post("/api/updateServerIP", async (req, res) => {
 });
 
 
-appApi.get("/api/getServerIP", async (req, res) => {
+appApi.get("/api/getServerIPJson", async (req, res) => {
   try {
     const ipAddressJson = getIpAddressJson();
     res.status(200).json(ipAddressJson);

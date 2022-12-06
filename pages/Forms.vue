@@ -4,15 +4,22 @@
       label="Assigned ID" :value="stateHandler.participant" :rules="rulesName"
       @change="onUpdateID"></v-text-field>
     <v-text-field
-      label="iOS address" :value="stateHandler.iosIP" :rules="rulesIP"
+      label="iOS IP address" :value="stateHandler.iosIP" :rules="rulesIP"
       @change="onUpdateIosIP">
       >
     </v-text-field>
-
-    <v-select v-model="stateHandler.selectConditions.state" :items="stateHandler.conditions"
-              @change="onUpdateCondition"></v-select>
-    <v-select v-model="stateHandler.selectTasks.state" :items="stateHandler.tasks"
-              @change="onUpdateTask"></v-select>
+    <v-select
+      label="Server IP address"
+      :items=stateHandler.serverIPList @change="onUpdateServerIP"
+    ></v-select>
+    <v-select
+      label="Condition"
+      v-model="stateHandler.selectConditions.state" :items="stateHandler.conditions"
+      @change="onUpdateCondition"></v-select>
+    <v-select
+      label="Task"
+      v-model="stateHandler.selectTasks.state" :items="stateHandler.tasks"
+      @change="onUpdateTask"></v-select>
   </v-col>
 </template>
 <script>
@@ -46,6 +53,9 @@ export default defineComponent({
         // pass variables to parent component
         emit("update-ios-ip", iosIP);
       };
+      const onUpdateServerIP = (serverIP) => {
+        emit("update-server-ip", serverIP);
+      };
       const onUpdateCondition = (condition) => {
         emit("update-condition", condition);
       };
@@ -57,6 +67,7 @@ export default defineComponent({
         rulesIP,
         onUpdateID,
         onUpdateIosIP,
+        onUpdateServerIP,
         onUpdateCondition,
         onUpdateTask,
       }

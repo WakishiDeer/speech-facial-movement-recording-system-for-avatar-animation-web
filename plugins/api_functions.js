@@ -21,6 +21,22 @@ export async function getUserDataJson(participant) {
   return {resData, statusCode, message};
 }
 
+export async function getServerIPJson() {
+  const url = "http://localhost:13000/api/getServerIPJson";
+  let resData, statusCode, message;
+  await axios.get(url)
+    .then((res) => {
+      const ret = encloseStatusMessageGet(res);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
+    })
+    .catch((err) => {
+      throw err;
+    });
+  return {resData, statusCode, message};
+}
+
 export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = false) {
   // first, remove `data` from userDataJson
   const userDataJsonWithoutData = userDataJson["data"];
@@ -53,6 +69,22 @@ export async function postIosIP(messageJson) {
   const headers = {
     "Content-Type": "application/json"
   };
+
+  return await axios.post(url, messageJson, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
+export async function postServerIP(messageJson) {
+  const url = "http://localhost:13000/api/updateServerIP";
+
+  const headers = {
+    "Content-Type": "application/json"
+  }
 
   return await axios.post(url, messageJson, {headers: headers})
     .then((res) => {

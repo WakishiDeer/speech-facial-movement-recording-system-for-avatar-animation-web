@@ -1,4 +1,4 @@
-import {getUserDataJson, postIosIP, postSaveUserDataJson} from "~/plugins/api_functions";
+import {getServerIPJson, getUserDataJson, postIosIP, postSaveUserDataJson, postServerIP} from "~/plugins/api_functions";
 import {checkUserDataJsonValid} from "~/plugins/utils";
 import Vue from "vue";
 
@@ -6,6 +6,16 @@ import Vue from "vue";
 export async function loadUserDataJson(participant) {
   try {
     const {resData, statusCode, message} = await getUserDataJson(participant);
+    return resData;
+  } catch (err) {
+    throw err;
+  }
+}
+
+export async function loadServerIPJson() {
+  try {
+    // resData should be JSON object
+    const {resData, statusCode, message} = await getServerIPJson();
     return resData;
   } catch (err) {
     throw err;
@@ -45,6 +55,15 @@ export async function sendIosIP(iosIP) {
 
   const {statusCode, message} = await postIosIP(messageJson);
   console.log("sendIosIP: " + message);
+}
+
+export async function sendServerIP(serverIP) {
+  const messageJson = {
+    "server-ip": serverIP,
+  }
+
+  const {statusCode, message} = await postServerIP(messageJson);
+  console.log("sendServerIP: " + message);
 }
 
 export function getScriptIndex(stateHandler) {

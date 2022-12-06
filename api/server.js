@@ -1,11 +1,18 @@
-const app = require("express")();
+const appApi = require("express")();
+const appOsc = require("express")();
+const ws = require("ws");
+const osc = require("osc");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const {networkInterfaces} = require("os");
 const multer = require("multer");
 
-const port = 13000;
+let hostIP = "127.0.0.1";
+let iosIP = "127.0.0.1";
+const portApi = 13000;
+const portOsc = 8000;
 const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
 // multipart setting
 const storage = multer.diskStorage({
@@ -25,17 +32,19 @@ const upload = multer({
   storage: storage,
 });
 
-app.use(cors());
-app.use(bodyParser.urlencoded({
+
+appApi.use(cors());
+appApi.use(bodyParser.urlencoded({
   extended: true,
   limit: "300mb"
 }));
-app.use(bodyParser.json({
+appApi.use(bodyParser.json({
   limit: "100mb"
 }));
 
-app.listen(port, () => {
-  console.log("Start listening...");
+// api
+appApi.listen(portApi, () => {
+  console.log("Start listening api...");
 });
 
 function checkGetParticipant(req) {
@@ -70,7 +79,7 @@ async function writeJsonFile(filePath, req) {
   console.log("User data has been saved at: " + filePath);
 }
 
-app.post("/api/saveJson", async (req, res) => {
+appApi.post("/api/saveJson", async (req, res) => {
   try {
     const participant = checkGetParticipant(req);
     const filePath = getUserDataJsonPath(userDataRootPath, participant);

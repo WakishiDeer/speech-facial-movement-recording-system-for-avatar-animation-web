@@ -1,4 +1,4 @@
-import {getUserDataJson, postSaveUserDataJson} from "~/plugins/api_functions";
+import {getUserDataJson, postIosIP, postSaveUserDataJson} from "~/plugins/api_functions";
 import {checkUserDataJsonValid} from "~/plugins/utils";
 import Vue from "vue";
 
@@ -12,7 +12,7 @@ export async function loadUserDataJson(participant) {
   }
 }
 
-export function saveUserDataJson(userDataJson, stateHandler) {
+export async function saveUserDataJson(userDataJson, stateHandler) {
   try {
     checkUserDataJsonValid(userDataJson);
   } catch (err) {
@@ -25,7 +25,7 @@ export function saveUserDataJson(userDataJson, stateHandler) {
   console.log("saveUserDataJson: " + message);
 }
 
-export function saveUserDataJsonTemp(userDataJson, stateHandler) {
+export async function saveUserDataJsonTemp(userDataJson, stateHandler) {
   try {
     checkUserDataJsonValid(userDataJson);
   } catch (err) {
@@ -36,6 +36,15 @@ export function saveUserDataJsonTemp(userDataJson, stateHandler) {
   const isTemp = true;
   const {statusCode, message} = postSaveUserDataJson(userDataJson, stateHandler, isTemp);
   console.log("saveUserDataJsonTemp: " + message);
+}
+
+export async function sendIosIP(iosIP) {
+  const messageJson = {
+    "ios-ip": iosIP,
+  }
+
+  const {statusCode, message} = await postIosIP(messageJson);
+  console.log("sendIosIP: " + message);
 }
 
 export function getScriptIndex(stateHandler) {

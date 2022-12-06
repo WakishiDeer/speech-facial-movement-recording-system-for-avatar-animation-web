@@ -47,6 +47,22 @@ export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = 
     });
 }
 
+export async function postIosIP(messageJson) {
+  const url = "http://localhost:13000/api/updateIosIP";
+
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
+  return await axios.post(url, messageJson, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
 export async function postBlob(blob, extension, clipNameCandidate, stateHandler) {
   const clipName = clipNameCandidate + getTimeCode();
   const url = "http://localhost:13000/api/saveMedia";

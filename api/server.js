@@ -92,7 +92,7 @@ appApi.post("/api/saveJson", async (req, res) => {
   }
 });
 
-app.post("/api/saveJsonTemp", async (req, res) => {
+appApi.post("/api/saveJsonTemp", async (req, res) => {
   try {
     const participant = checkGetParticipant(req);
     const dateTime = req.headers["date-time"];
@@ -106,7 +106,7 @@ app.post("/api/saveJsonTemp", async (req, res) => {
   }
 })
 
-app.get("/api/loadJson", async (req, res) => {
+appApi.get("/api/loadJson", async (req, res) => {
   try {
     const participant = checkGetParticipant(req);
     const filePath = getUserDataJsonPath(userDataRootPath, participant);
@@ -127,7 +127,7 @@ app.get("/api/loadJson", async (req, res) => {
 });
 
 // use `multer` to save "multipart/from-data"
-app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
+appApi.post("/api/saveMedia", upload.single("file"), async (req, res) => {
   try {
     res.send("Media has been saved successfully...");
   } catch (err) {
@@ -136,5 +136,105 @@ app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
   }
 });
 
+appApi.post("/api/updateIosIP", async (req, res) => {
+  try {
+    iosIP = req.body["ios-ip"];
+    console.info("ios IP has been updated: " + iosIP);
+    res.send("iOS IP has been updated successfully...: " + iosIP);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
 
-module.exports = app;
+
+appApi.post("/api/updateServerIP", async (req, res) => {
+  try {
+    const serverIP = req.body["server-ip"];
+    console.info("server IP has been updated: " + serverIP);
+    res.send("Server IP Address has been updated successfully...: " + serverIP);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+
+appApi.get("/api/getServerIP", async (req, res) => {
+  try {
+    const ipAddressJson = getIpAddressJson();
+    res.status(200).json(ipAddressJson);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.get("/api/oscStart", async (req, res) => {
+  try {
+    runOscServer(server);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+// osc settings
+// osc
+function getIpAddressJson() {
+  return networkInterfaces();
+}
+
+const server = appOsc.listen(portOsc, () => {
+  console.log("Start listening osc...");
+});
+
+function runOscServer(server) {
+  const wss = new ws.WebSocketServer({
+    server: server
+  });
+  // listen for connections
+  wss.on("connection", (socket) => {
+    const socketPort = new osc.TCPSocketPort({
+      socket: socket,
+      metadata: true
+    });
+
+    socketPort.on("ready", () => {
+      socketPort.send({
+        address: "/OSCSetSendTarget",
+        args: [{
+          type: "IP",
+          value: hostIP
+        },
+          {
+            type: "port",
+            value: portOsc
+          }
+        ]
+      });
+      socketPort.send({
+        "address": "/AddLiveLinkAddress",
+        "args": [{
+          type: "IP",
+          value: iosIP
+        },
+          {
+            type: "port",
+            value: portOsc
+          }]
+      });
+    });
+
+    socketPort.on("message", (oscMsg) => {
+      console.log("Message from iPad: ", oscMsg);
+    });
+
+    socketPort.on("error", (err) => {
+      console.error(err);
+    });
+  });
+}
+
+
+module.exports = appApi;

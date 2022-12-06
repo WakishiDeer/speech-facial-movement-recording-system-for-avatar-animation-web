@@ -1,8 +1,14 @@
 <template>
   <v-col cols="3">
     <v-text-field
-      label="Assigned ID" :value="stateHandler.participant" :rules="rules"
+      label="Assigned ID" :value="stateHandler.participant" :rules="rulesName"
       @change="onUpdateID"></v-text-field>
+    <v-text-field
+      label="iOS address" :value="stateHandler.iosIP" :rules="rulesIP"
+      @change="onUpdateIosIP">
+      >
+    </v-text-field>
+
     <v-select v-model="stateHandler.selectConditions.state" :items="stateHandler.conditions"
               @change="onUpdateCondition"></v-select>
     <v-select v-model="stateHandler.selectTasks.state" :items="stateHandler.tasks"
@@ -11,7 +17,7 @@
 </template>
 <script>
 import {defineComponent} from '@nuxtjs/composition-api'
-
+import {isValidIPv4} from "~/plugins/utils";
 
 export default defineComponent({
     name: 'Forms',
@@ -22,15 +28,23 @@ export default defineComponent({
     setup(props, {emit}) {
       // data declaration
       // rules for text field
-      const rules = [
+      const rulesName = [
         val => !!val || 'Name is required',
         val => (val && val.length <= 100) || 'Length must be less than 100 characters!',
+      ];
+      const rulesIP = [
+        val => !!val || 'IP is required',
+        val => (val && isValidIPv4(val)) || 'IP is not valid!',
       ];
 
       // methods declaration
       const onUpdateID = (participant) => {
         // pass variables to parent component
         emit("update-id", participant);
+      };
+      const onUpdateIosIP = (iosIP) => {
+        // pass variables to parent component
+        emit("update-ios-ip", iosIP);
       };
       const onUpdateCondition = (condition) => {
         emit("update-condition", condition);
@@ -39,8 +53,10 @@ export default defineComponent({
         emit("update-task", task);
       }
       return {
-        rules,
+        rulesName,
+        rulesIP,
         onUpdateID,
+        onUpdateIosIP,
         onUpdateCondition,
         onUpdateTask,
       }

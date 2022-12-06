@@ -4,7 +4,8 @@
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
-                 @update-id="updateID" @update-condition="updateCondition"
+                 @update-id="updateID" @update-ios-ip="updateIosIP"
+                 @update-condition="updateCondition"
                  @update-task="updateTask"/>
 
           <MediaControllers :state-handler="stateHandler" :audio-handler="audioHandler" :video-handler="videoHandler"
@@ -65,6 +66,7 @@ import {
   getSlideLength,
   getScriptLength,
   saveUserDataJsonTemp,
+  sendIosIP,
 } from "~/plugins/state_handler";
 import Forms from "~/pages/Forms";
 import MediaControllers from "~/pages/MediaControllers";
@@ -81,7 +83,7 @@ import {
 } from "~/plugins/media_stream_recorder";
 import {defineComponent, onBeforeMount, watch} from '@nuxtjs/composition-api'
 import {getTimeCode} from "~/plugins/time_handler";
-import {checkExclusive, isFirstSlide, isLastSlide} from "~/plugins/utils";
+import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4} from "~/plugins/utils";
 
 
 export default defineComponent({
@@ -117,6 +119,9 @@ export default defineComponent({
         currentSlideIndex: 0,
         slideLength: 0,
         sleepTimeMs: 2000,
+        // osc
+        iosIP: "127.0.0.1",
+        serverIP: "127.0.0.1",
       });
       const timeHandler = reactive({
         hour: 0,
@@ -172,6 +177,17 @@ export default defineComponent({
       // forms
       const updateID = (participant) => {
         stateHandler.participant = participant;
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "participant", participant);
+      };
+
+      const updateIosIP = (iosIP) => {
+        if (isValidIPv4(iosIP)) {
+          stateHandler.iosIP = iosIP;
+          const localStorage = window.localStorage;
+          setLocalStorage(localStorage, "iosIP", iosIP);
+          sendIosIP(stateHandler.iosIP);
+        }
       };
 
       const updateCondition = (condition) => {
@@ -415,11 +431,22 @@ export default defineComponent({
         // default loading
         const localStorage = window.localStorage;
         const participantCandidate = getLocalStorage(localStorage, "participant");
-
         // take over the existing data
         if (!(participantCandidate === null)) {
           // when cache is valid, set existing name
           stateHandler.participant = participantCandidate;
+          setLocalStorage(localStorage, "participant", stateHandler.participant);
+        }
+        const iosIPCandidate = getLocalStorage(localStorage, "iosIP");
+        if (isValidIPv4(iosIPCandidate)) {
+          // when cache is valid, set existing name
+          stateHandler.iosIP = iosIPCandidate;
+          setLocalStorage(localStorage, "iosIP", stateHandler.iosIP);
+        }
+        const serverIPCandidate = getLocalStorage(localStorage, "serverIP");
+        if (isValidIPv4(serverIPCandidate)) {
+          stateHandler.serverIP = serverIPCandidate;
+          setLocalStorage(localStorage, "serverIP", stateHandler.serverIP);
         }
 
         // load json file of user data
@@ -429,6 +456,7 @@ export default defineComponent({
               // deep copy
               userDataJson["data"] = Object.assign({}, JSON.parse(JSON.stringify(userDataJsonNew)));
               userDataJson = JSON.parse(JSON.stringify(userDataJson));
+              setLocalStorage(localStorage, "userDataJson", JSON.stringify(userDataJson));
             });
         } catch (err) {
           console.error(err);
@@ -454,9 +482,6 @@ export default defineComponent({
           // i.e., minRmsAvg > maxRmsAvg
           console.error(e);
         }
-
-        setLocalStorage(localStorage, "participant", stateHandler.participant);
-        setLocalStorage(localStorage, "userDataJson", JSON.stringify(userDataJson));
       });
 
       // watchers
@@ -502,6 +527,7 @@ export default defineComponent({
         userDataJson,
         rerenderNum,
         updateID,
+        updateIosIP,
         updateCondition,
         updateTask,
         updateMicParams,

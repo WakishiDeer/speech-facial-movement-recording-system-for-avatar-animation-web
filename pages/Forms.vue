@@ -10,11 +10,12 @@
     </v-text-field>
     <v-select
       label="Server IP address"
+      v-model="stateHandler.serverIP"
       :items=stateHandler.serverIPList @change="onUpdateServerIP"
     ></v-select>
     <v-select
       label="Condition"
-      v-model="stateHandler.selectConditions.state" :items="stateHandler.conditions"
+      v-model="stateHandler.selectConditions.state" :items="stateHandler.conditionList"
       @change="onUpdateCondition"></v-select>
     <v-select
       label="Task"

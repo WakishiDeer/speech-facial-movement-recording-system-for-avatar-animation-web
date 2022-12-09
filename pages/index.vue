@@ -2,6 +2,11 @@
   <v-app>
     <v-main>
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
+        <v-row>
+          <HealthBoard
+            :stateHandler="stateHandler"
+          />
+        </v-row>
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
                  @update-id="updateID" @update-ios-ip="updateIosIP" @update-server-ip="updateServerIP"
@@ -50,7 +55,7 @@ p {
 </style>
 
 <script>
-import {reactive, ref} from "vue";
+import {onMounted, reactive, ref} from "vue";
 import {
   getLocalStorage,
   loadUserDataJson,
@@ -66,8 +71,16 @@ import {
   getSlideLength,
   getScriptLength,
   saveUserDataJsonTemp,
-  sendIosIP, loadServerIPJson, sendServerIP,
+  sendIosIP,
+  loadServerIPJson,
+  sendServerIP,
+  loadServerStateJson,
+  sendTask,
+  sendCondition,
+  sendParticipant,
+  sendConditionList,
 } from "~/plugins/state_handler";
+import HealthBoard from "~/pages/HealthBoard";
 import Forms from "~/pages/Forms";
 import MediaControllers from "~/pages/MediaControllers";
 import ImageViewers from "~/pages/ImageViewers";
@@ -88,7 +101,10 @@ import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4, makeServerIPList
 
 export default defineComponent({
     name: 'IndexPage',
-    components: {ScriptControllers, VolumeMeter, CalibrationControllers, ImageViewers, MediaControllers, Forms},
+    components: {
+      HealthBoard,
+      ScriptControllers, VolumeMeter, CalibrationControllers, ImageViewers, MediaControllers, Forms
+    },
     setup() {
       // ON CREATED
       // data declaration
@@ -107,7 +123,7 @@ export default defineComponent({
         isAnimated: false,
         barColor: "blue-gray",
         // scripts
-        conditions: ["normal", "low", "high", "muffled"],
+        conditionList: ["normal", "low", "high", "muffled"],
         selectConditions: {state: "normal"},
         tasks: ["ita", "vowel"],
         selectTasks: {state: "ita"},
@@ -119,6 +135,8 @@ export default defineComponent({
         currentSlideIndex: 0,
         slideLength: 0,
         sleepTimeMs: 2000,
+        // server state
+        serverStateJson: {},
         // osc
         iosIP: "127.0.0.1",
         serverIP: "127.0.0.1",
@@ -178,25 +196,17 @@ export default defineComponent({
       // forms
       const updateID = (participant) => {
         stateHandler.participant = participant;
-        const localStorage = window.localStorage;
-        setLocalStorage(localStorage, "participant", participant);
       };
 
       const updateIosIP = (iosIP) => {
         if (isValidIPv4(iosIP)) {
           stateHandler.iosIP = iosIP;
-          const localStorage = window.localStorage;
-          setLocalStorage(localStorage, "iosIP", iosIP);
-          sendIosIP(stateHandler.iosIP);
         }
       };
 
       const updateServerIP = (serverIP) => {
         if (isValidIPv4(serverIP)) {
           stateHandler.serverIP = serverIP;
-          const localStorage = window.localStorage;
-          setLocalStorage(localStorage, "serverIP", serverIP);
-          sendServerIP(stateHandler.serverIP);
         }
       };
 
@@ -436,7 +446,8 @@ export default defineComponent({
         }
       };
 
-      // name setting
+      sendConditionList(stateHandler.conditionList);
+
       onBeforeMount(async () => {
         // default loading
         const localStorage = window.localStorage;
@@ -444,20 +455,19 @@ export default defineComponent({
         // take over the existing data
         if (!(participantCandidate === null)) {
           // when cache is valid, set existing name
-          stateHandler.participant = participantCandidate;
-          setLocalStorage(localStorage, "participant", stateHandler.participant);
+          updateID(participantCandidate);
         }
         const iosIPCandidate = getLocalStorage(localStorage, "iosIP");
         if (isValidIPv4(iosIPCandidate)) {
           // when cache is valid, set existing name
-          stateHandler.iosIP = iosIPCandidate;
-          setLocalStorage(localStorage, "iosIP", stateHandler.iosIP);
+          updateIosIP(iosIPCandidate);
         }
         const serverIPCandidate = getLocalStorage(localStorage, "serverIP");
         if (isValidIPv4(serverIPCandidate)) {
-          stateHandler.serverIP = serverIPCandidate;
-          setLocalStorage(localStorage, "serverIP", stateHandler.serverIP);
+          updateServerIP(serverIPCandidate);
         }
+        // initialize server's state
+        await initializeServerState();
 
         // load json file of user data
         try {
@@ -476,7 +486,6 @@ export default defineComponent({
         try {
           const serverIPJson = await loadServerIPJson()
           stateHandler.serverIPList = makeServerIPList(serverIPJson);
-          console.log(stateHandler.serverIPList);
         } catch (err) {
           console.error(err);
         }
@@ -503,6 +512,19 @@ export default defineComponent({
         }
       });
 
+      const initializeServerState = async () => {
+        try {
+          await sendParticipant(stateHandler.participant);
+          await sendCondition(stateHandler.selectConditions.state);
+          await sendTask(stateHandler.selectTasks.state);
+          await sendServerIP(stateHandler.serverIP);
+          await sendIosIP(stateHandler.iosIP);
+          stateHandler.serverStateJson = await loadServerStateJson();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
       // watchers
       let rerenderNum = ref(0);
       // when slide length is updated, rerender (for ensuring correct order of slides)
@@ -511,8 +533,18 @@ export default defineComponent({
         rerenderNum.value++;
       });
 
+      watch(() => stateHandler.participant, async () => {
+        // update local storage
+        await sendParticipant(stateHandler.participant);
+        stateHandler.serverStateJson = await loadServerStateJson();
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "participant", stateHandler.participant);
+      });
+
       // when switching the task
-      watch(() => stateHandler.selectTasks.state, () => {
+      watch(() => stateHandler.selectTasks.state, async () => {
+        await sendTask(stateHandler.selectTasks.state);
+        stateHandler.serverStateJson = await loadServerStateJson();
         // firstly, update script length
         const scriptLength = getScriptLength(stateHandler, userDataJson);
         const slideLength = getSlideLength(stateHandler, userDataJson);
@@ -524,7 +556,9 @@ export default defineComponent({
       });
 
       // when switching the condition
-      watch(() => stateHandler.selectConditions.state, () => {
+      watch(() => stateHandler.selectConditions.state, async () => {
+        await sendCondition(stateHandler.selectConditions.state);
+        stateHandler.serverStateJson = await loadServerStateJson();
         // initialize script index and slide index
         updateSlideIndex(0);
         // count up to force render
@@ -535,6 +569,20 @@ export default defineComponent({
       watch(() => stateHandler.currentSlideIndex, () => {
         const {currentScriptNo, currentScriptContent} = getCurrentScriptNoContent(stateHandler, userDataJson);
         updateScriptNoContent(currentScriptNo, currentScriptContent);
+      });
+
+      // watch IPs and server state
+      watch(() => stateHandler.iosIP, async () => {
+        await sendIosIP(stateHandler.iosIP);
+        stateHandler.serverStateJson = await loadServerStateJson();
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "iosIP", stateHandler.iosIP);
+      });
+      watch(() => stateHandler.serverIP, async () => {
+        await sendServerIP(stateHandler.serverIP);
+        stateHandler.serverStateJson = await loadServerStateJson();
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "serverIP", stateHandler.serverIP);
       });
 
       return {

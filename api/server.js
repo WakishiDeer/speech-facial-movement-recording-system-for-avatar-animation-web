@@ -1,6 +1,4 @@
 const appApi = require("express")();
-const appOsc = require("express")();
-const ws = require("ws");
 const osc = require("osc");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -9,17 +7,24 @@ const path = require("path");
 const {networkInterfaces} = require("os");
 const multer = require("multer");
 
-let hostIP = "127.0.0.1";
-let iosIP = "127.0.0.1";
-const portApi = 13000;
-const portOsc = 8000;
+let serverStateJson = {
+  "osc-server-active": false,
+  "participant": "",
+  "condition": "",
+  "task": "",
+  "server-ip": "127.0.0.1",
+  "ios-ip": "127.0.0.1",
+  "api-port": 13000,
+  "osc-port": 8000
+};
+let conditionList = [];
+let takeNum = 0;
 const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
 // multipart setting
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     // make dir if not existing
-    const participant = checkGetParticipant(req);
-    const folderPath = getUserDataDirPath(userDataRootPath, participant);
+    const folderPath = getUserDataDirPath(userDataRootPath, serverStateJson["participant"]);
     // callback
     cb(null, folderPath);
   },
@@ -43,16 +48,16 @@ appApi.use(bodyParser.json({
 }));
 
 // api
-appApi.listen(portApi, () => {
+appApi.listen(serverStateJson["api-port"], () => {
   console.log("Start listening api...");
 });
 
-function checkGetParticipant(req) {
-  const participant = req.query.participant;
-  if (participant === undefined) {
-    throw Error("Participant is not specified.");
-  }
-  return participant;
+function updateServerState(item, value) {
+  serverStateJson[item] = value;
+  // initialize osc server
+  udpPort = initializeUdpPort();
+  sendInitialization(udpPort);
+  console.log("Server state has been updated: ", item);
 }
 
 function getUserDataJsonPath(userDataRootPath, participant, isTemp = false) {
@@ -81,8 +86,7 @@ async function writeJsonFile(filePath, req) {
 
 appApi.post("/api/saveJson", async (req, res) => {
   try {
-    const participant = checkGetParticipant(req);
-    const filePath = getUserDataJsonPath(userDataRootPath, participant);
+    const filePath = getUserDataJsonPath(userDataRootPath, serverStateJson["participant"]);
 
     await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
@@ -94,9 +98,8 @@ appApi.post("/api/saveJson", async (req, res) => {
 
 appApi.post("/api/saveJsonTemp", async (req, res) => {
   try {
-    const participant = checkGetParticipant(req);
     const dateTime = req.headers["date-time"];
-    const filePath = getUserDataJsonPath(userDataRootPath, participant, true);
+    const filePath = getUserDataJsonPath(userDataRootPath, serverStateJson["participant"], true);
 
     await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
@@ -106,10 +109,93 @@ appApi.post("/api/saveJsonTemp", async (req, res) => {
   }
 })
 
+
+// use `multer` to save "multipart/from-data"
+appApi.post("/api/saveMedia", upload.single("file"), async (req, res) => {
+  try {
+    res.send("Media has been saved successfully...");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateIosIP", async (req, res) => {
+  try {
+    const iosIP = req.body["ios-ip"];
+    updateServerState("ios-ip", iosIP);
+    console.info("ios IP has been updated: " + iosIP);
+    res.send("iOS IP has been updated successfully...: " + iosIP);
+    udpPort = initializeUdpPort();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateServerIP", async (req, res) => {
+  try {
+    const hostIP = req.body["server-ip"];
+    updateServerState("server-ip", hostIP);
+    console.info("server IP has been updated: " + hostIP);
+    // initialize osc server
+    res.send("Server IP Address has been updated successfully...: " + hostIP);
+    udpPort = initializeUdpPort();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateParticipant", async (req, res) => {
+  try {
+    const participant = req.body["participant"];
+    updateServerState("participant", participant);
+    // initialize osc server
+    res.send("Participant has been updated successfully...: " + participant);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateCondition", async (req, res) => {
+  try {
+    const condition = req.body["condition"];
+    updateServerState("condition", condition);
+    // initialize osc server
+    res.send("Condition has been updated successfully...: " + condition);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateConditionList", async (req, res) => {
+  try {
+    // deep copy
+    conditionList = JSON.parse(JSON.stringify(req.body["condition-list"]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
+appApi.post("/api/updateTask", async (req, res) => {
+  try {
+    const task = req.body["task"];
+    updateServerState("task", task);
+    // initialize osc server
+    res.send("Task has been updated successfully...: " + task);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("error");
+  }
+});
+
 appApi.get("/api/loadJson", async (req, res) => {
   try {
-    const participant = checkGetParticipant(req);
-    const filePath = getUserDataJsonPath(userDataRootPath, participant);
+    const filePath = getUserDataJsonPath(userDataRootPath, serverStateJson["participant"]);
 
     const userData = fs.readFileSync(filePath, "utf-8");
     // if valid data, return it as success
@@ -126,40 +212,6 @@ appApi.get("/api/loadJson", async (req, res) => {
   }
 });
 
-// use `multer` to save "multipart/from-data"
-appApi.post("/api/saveMedia", upload.single("file"), async (req, res) => {
-  try {
-    res.send("Media has been saved successfully...");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("error");
-  }
-});
-
-appApi.post("/api/updateIosIP", async (req, res) => {
-  try {
-    iosIP = req.body["ios-ip"];
-    console.info("ios IP has been updated: " + iosIP);
-    res.send("iOS IP has been updated successfully...: " + iosIP);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("error");
-  }
-});
-
-
-appApi.post("/api/updateServerIP", async (req, res) => {
-  try {
-    const serverIP = req.body["server-ip"];
-    console.info("server IP has been updated: " + serverIP);
-    res.send("Server IP Address has been updated successfully...: " + serverIP);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("error");
-  }
-});
-
-
 appApi.get("/api/getServerIPJson", async (req, res) => {
   try {
     const ipAddressJson = getIpAddressJson();
@@ -170,71 +222,114 @@ appApi.get("/api/getServerIPJson", async (req, res) => {
   }
 });
 
-appApi.get("/api/oscStart", async (req, res) => {
+appApi.get("/api/getServerStateJson", async (req, res) => {
   try {
-    runOscServer(server);
+    const serverStateJson = getServerStateJson();
+    res.status(200).json(serverStateJson);
   } catch (err) {
     console.error(err);
     res.status(500).send("error");
   }
 });
 
+
 // osc settings
 // osc
+let udpPort = initializeUdpPort();
+console.log(udpPort.isConnected())
+runOscServer(udpPort);
+
+function initializeUdpPort() {
+  const udpPort = new osc.UDPPort({
+    localAddress: serverStateJson["server-ip"],
+    localPort: serverStateJson["api-port"],
+    remoteAddress: serverStateJson["ios-ip"],
+    remotePort: serverStateJson["osc-port"],
+    metadata: true,
+  });
+  udpPort.open();
+  serverStateJson["osc-server-active"] = isServerRunning(udpPort);
+  return udpPort;
+}
+
+function runOscServer(udpPort) {
+  // open the socket
+  udpPort.on("ready", () => {
+    sendInitialization(udpPort);
+    console.log("OSC server is ready...");
+  });
+  udpPort.on("message", (oscMsg) => {
+    console.log("Message from iPad: ", oscMsg);
+  });
+  // on receiving error
+  udpPort.on("error", (err) => {
+    console.error(err);
+  });
+}
+
 function getIpAddressJson() {
   return networkInterfaces();
 }
 
-const server = appOsc.listen(portOsc, () => {
-  console.log("Start listening osc...");
-});
+function isServerRunning(udpPort) {
+  return udpPort.socket && udpPort.socket.readyState === "open";
+}
 
-function runOscServer(server) {
-  const wss = new ws.WebSocketServer({
-    server: server
+function getServerStateJson() {
+  return serverStateJson;
+}
+
+
+function sendInitialization(udpPort) {
+  sendTargetAddresses(udpPort, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+  sendName(udpPort, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"],);
+}
+
+function sendTargetAddresses(udpPort, hostIP, iosIP, oscPort) {
+  udpPort.send({
+    address: "/OSCSetSendTarget",
+    args: [
+      {
+        type: "s",
+        value: hostIP
+      },
+      {
+        type: "i",
+        value: oscPort
+      }
+    ]
   });
-  // listen for connections
-  wss.on("connection", (socket) => {
-    const socketPort = new osc.TCPSocketPort({
-      socket: socket,
-      metadata: true
-    });
-
-    socketPort.on("ready", () => {
-      socketPort.send({
-        address: "/OSCSetSendTarget",
-        args: [{
-          type: "IP",
-          value: hostIP
-        },
-          {
-            type: "port",
-            value: portOsc
-          }
-        ]
-      });
-      socketPort.send({
-        "address": "/AddLiveLinkAddress",
-        "args": [{
-          type: "IP",
-          value: iosIP
-        },
-          {
-            type: "port",
-            value: portOsc
-          }]
-      });
-    });
-
-    socketPort.on("message", (oscMsg) => {
-      console.log("Message from iPad: ", oscMsg);
-    });
-
-    socketPort.on("error", (err) => {
-      console.error(err);
-    });
+  udpPort.send({
+    address: "/AddLiveLinkAddress",
+    args: [
+      {
+        type: "s",
+        value: iosIP
+      },
+      {
+        type: "i",
+        value: oscPort
+      }
+    ]
   });
 }
 
+function sendName(udpPort, participant, task, condition) {
+  // set slate name
+  udpPort.send({
+    "address": "/Slate",
+    "args": [{
+      "type": "s",
+      "value": participant + "_" + task + "_" + condition
+    }]
+  });
+  udpPort.send({
+    "address": "/Take",
+    "args": [{
+      "type": "i",
+      "value": takeNum
+    }]
+  });
+}
 
 module.exports = appApi;

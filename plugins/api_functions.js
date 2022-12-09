@@ -37,6 +37,22 @@ export async function getServerIPJson() {
   return {resData, statusCode, message};
 }
 
+export async function getServerStateJson() {
+  const url = "http://localhost:13000/api/getServerStateJson";
+  let resData, statusCode, message;
+  await axios.get(url)
+    .then((res) => {
+      const ret = encloseStatusMessageGet(res);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
+    })
+    .catch((err) => {
+      throw err;
+    });
+  return {resData, statusCode, message};
+}
+
 export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = false) {
   // first, remove `data` from userDataJson
   const userDataJsonWithoutData = userDataJson["data"];
@@ -63,12 +79,15 @@ export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = 
     });
 }
 
-export async function postIosIP(messageJson) {
-  const url = "http://localhost:13000/api/updateIosIP";
+export async function postServerState(stateVal, stateName, urlSuffix) {
+  const url = "http://localhost:13000/api/" + urlSuffix;
 
   const headers = {
-    "Content-Type": "application/json"
-  };
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
+  }
+  const messageJson = {
+    [stateName]: stateVal
+  }
 
   return await axios.post(url, messageJson, {headers: headers})
     .then((res) => {
@@ -79,11 +98,11 @@ export async function postIosIP(messageJson) {
     });
 }
 
-export async function postServerIP(messageJson) {
-  const url = "http://localhost:13000/api/updateServerIP";
+export async function postConditionList(messageJson) {
+  const url = "http://localhost:13000/api/updateConditionList";
 
   const headers = {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
   }
 
   return await axios.post(url, messageJson, {headers: headers})

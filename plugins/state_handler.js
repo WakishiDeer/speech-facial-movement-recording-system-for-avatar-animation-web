@@ -1,4 +1,10 @@
-import {getServerIPJson, getUserDataJson, postIosIP, postSaveUserDataJson, postServerIP} from "~/plugins/api_functions";
+import {
+  getServerIPJson,
+  getServerStateJson,
+  getUserDataJson, postConditionList,
+  postSaveUserDataJson,
+  postServerState
+} from "~/plugins/api_functions";
 import {checkUserDataJsonValid} from "~/plugins/utils";
 import Vue from "vue";
 
@@ -16,6 +22,15 @@ export async function loadServerIPJson() {
   try {
     // resData should be JSON object
     const {resData, statusCode, message} = await getServerIPJson();
+    return resData;
+  } catch (err) {
+    throw err;
+  }
+}
+
+export async function loadServerStateJson() {
+  try {
+    const {resData, statusCode, message} = await getServerStateJson();
     return resData;
   } catch (err) {
     throw err;
@@ -48,22 +63,38 @@ export async function saveUserDataJsonTemp(userDataJson, stateHandler) {
   console.log("saveUserDataJsonTemp: " + message);
 }
 
-export async function sendIosIP(iosIP) {
+export async function sendConditionList(conditionList) {
+  // note that this is not serverState
   const messageJson = {
-    "ios-ip": iosIP,
-  }
+    "condition-list": conditionList
+  };
+  const {statusCode, message} = await postConditionList(messageJson);
+  console.log("sendConditionList: " + message);
+}
 
-  const {statusCode, message} = await postIosIP(messageJson);
+export async function sendIosIP(iosIP) {
+  const {statusCode, message} = await postServerState(iosIP, "ios-ip", "updateIosIP");
   console.log("sendIosIP: " + message);
 }
 
 export async function sendServerIP(serverIP) {
-  const messageJson = {
-    "server-ip": serverIP,
-  }
-
-  const {statusCode, message} = await postServerIP(messageJson);
+  const {statusCode, message} = await postServerState(serverIP, "server-ip", "updateServerIP");
   console.log("sendServerIP: " + message);
+}
+
+export async function sendParticipant(participant) {
+  const {statusCode, message} = await postServerState(participant, "participant", "updateParticipant");
+  console.log("sendParticipant: " + message);
+}
+
+export async function sendCondition(condition) {
+  const {statusCode, message} = await postServerState(condition, "condition", "updateCondition");
+  console.log("sendCondition: " + message);
+}
+
+export async function sendTask(task) {
+  const {statusCode, message} = await postServerState(task, "task", "updateTask");
+  console.log("sendTask: " + message);
 }
 
 export function getScriptIndex(stateHandler) {

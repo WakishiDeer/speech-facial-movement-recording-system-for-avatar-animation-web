@@ -1,5 +1,5 @@
 const appApi = require("express")();
-const OSC = require("osc-js");
+const osc = require("osc");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
@@ -15,10 +15,10 @@ let serverStateJson = {
   "server-ip": "127.0.0.1",
   "ios-ip": "127.0.0.1",
   "api-port": 13000,
-  "osc-port": 8000
+  "osc-port": 8000,
+  "takeNum": 0,
 };
 let conditionList = [];
-let takeNum = 0;
 const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
 // multipart setting
 const storage = multer.diskStorage({
@@ -41,10 +41,8 @@ const upload = multer({
 appApi.use(cors());
 appApi.use(bodyParser.urlencoded({
   extended: true,
-  limit: "300mb"
 }));
 appApi.use(bodyParser.json({
-  limit: "100mb"
 }));
 
 // api
@@ -52,12 +50,32 @@ appApi.listen(serverStateJson["api-port"], () => {
   console.log("Start listening api...");
 });
 
+
+function getIpAddressJson() {
+  return networkInterfaces();
+}
+
+function getServerStateJson() {
+  return serverStateJson;
+}
+
 function updateServerState(item, value) {
   serverStateJson[item] = value;
-  // initialize osc server
-  udpPort = initializeUdpPort();
-  sendInitialization(udpPort);
-  console.log("Server state has been updated: ", item);
+
+  // restart osc server
+  if (item === "server-ip") {
+    oscClient.close();
+    oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
+    oscClient.open();
+  }
+  // reset osc server
+  if (item === "ios-ip" || item === "server-ip") {
+    sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+  }
+  // change name of the Live Link Face
+  if (item === "participant" || item === "task" || item === "condition") {
+    sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+  }
 }
 
 function getUserDataJsonPath(userDataRootPath, participant, isTemp = false) {
@@ -126,7 +144,6 @@ appApi.post("/api/updateIosIP", async (req, res) => {
     updateServerState("ios-ip", iosIP);
     console.info("ios IP has been updated: " + iosIP);
     res.send("iOS IP has been updated successfully...: " + iosIP);
-    udpPort = initializeUdpPort();
   } catch (err) {
     console.error(err);
     res.status(500).send("error");
@@ -140,7 +157,6 @@ appApi.post("/api/updateServerIP", async (req, res) => {
     console.info("server IP has been updated: " + hostIP);
     // initialize osc server
     res.send("Server IP Address has been updated successfully...: " + hostIP);
-    udpPort = initializeUdpPort();
   } catch (err) {
     console.error(err);
     res.status(500).send("error");
@@ -232,64 +248,19 @@ appApi.get("/api/getServerStateJson", async (req, res) => {
   }
 });
 
-
-// osc settings
-// osc
-let osc = initializeUdpPort();
-osc.open();
-
-function initializeUdpPort() {
-  return new OSC({plugin: new OSC.WebsocketServerPlugin({port: 8000})});
+function initializeUDPPort(address, port, remoteAddress) {
+  return new osc.UDPPort({
+      localAddress: address,
+      localPort: port,
+      remoteAddress: remoteAddress,
+      remotePort: port,
+      metadata: true,
+    }
+  )
 }
 
-function createMessage(...args) {
-  const url = args[0];
-  if(args.length < 2){
-    throw new Error("OSC message should have at least 2 arguments");
-  }else if (args.length === 2){
-    return new OSC.Message(url, args[1]);
-  }else{
-    // first arg is URL
-    // second and later args are data
-    return new OSC.Message(url, ...args.slice(1));
-  }
-}
-
-function runOscServer(udpPort) {
-  // open the socket
-  udpPort.on("ready", () => {
-    sendInitialization(udpPort);
-    console.log("OSC server is ready...");
-  });
-  udpPort.on("message", (oscMsg) => {
-    console.log("Message from iPad: ", oscMsg);
-  });
-  // on receiving error
-  udpPort.on("error", (err) => {
-    console.error(err);
-  });
-}
-
-function getIpAddressJson() {
-  return networkInterfaces();
-}
-
-function isServerRunning(udpPort) {
-  return udpPort.socket && udpPort.socket.readyState === "open";
-}
-
-function getServerStateJson() {
-  return serverStateJson;
-}
-
-
-function sendInitialization(udpPort) {
-  sendTargetAddresses(udpPort, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
-  sendName(udpPort, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"],);
-}
-
-function sendTargetAddresses(udpPort, hostIP, iosIP, oscPort) {
-  udpPort.send({
+function sendTargetAddresses(oscClient, hostIP, iosIP, oscPort) {
+  oscClient.send({
     address: "/OSCSetSendTarget",
     args: [
       {
@@ -302,7 +273,7 @@ function sendTargetAddresses(udpPort, hostIP, iosIP, oscPort) {
       }
     ]
   });
-  udpPort.send({
+  oscClient.send({
     address: "/AddLiveLinkAddress",
     args: [
       {
@@ -317,22 +288,44 @@ function sendTargetAddresses(udpPort, hostIP, iosIP, oscPort) {
   });
 }
 
-function sendName(udpPort, participant, task, condition) {
+function sendName(oscClient, participant, task, condition) {
   // set slate name
-  udpPort.send({
+  oscClient.send({
     "address": "/Slate",
     "args": [{
       "type": "s",
       "value": participant + "_" + task + "_" + condition
     }]
   });
-  udpPort.send({
+  oscClient.send({
     "address": "/Take",
     "args": [{
-      "type": "i",
-      "value": takeNum
+      "type": "i"
     }]
   });
 }
+
+// osc settings
+// initialize osc server
+let oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
+
+oscClient.on("message", (oscMsg, timeTag, info) => {
+  console.info(oscMsg);
+  // console.info(timeTag);
+  // console.info(info);
+});
+
+oscClient.open();
+
+oscClient.on("ready", () => {
+  // set target addresses
+  sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+  sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+})
+
+oscClient.on("error", (err) => {
+  console.error(err);
+});
+
 
 module.exports = appApi;

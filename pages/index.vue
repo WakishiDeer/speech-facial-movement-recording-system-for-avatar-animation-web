@@ -55,7 +55,7 @@ p {
 </style>
 
 <script>
-import {onMounted, reactive, ref} from "vue";
+import {reactive, ref} from "vue";
 import {
   getLocalStorage,
   loadUserDataJson,

@@ -1,5 +1,5 @@
 const appApi = require("express")();
-const osc = require("osc");
+const OSC = require("osc-js");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
@@ -235,21 +235,24 @@ appApi.get("/api/getServerStateJson", async (req, res) => {
 
 // osc settings
 // osc
-let udpPort = initializeUdpPort();
-console.log(udpPort.isConnected())
-runOscServer(udpPort);
+let osc = initializeUdpPort();
+osc.open();
 
 function initializeUdpPort() {
-  const udpPort = new osc.UDPPort({
-    localAddress: serverStateJson["server-ip"],
-    localPort: serverStateJson["api-port"],
-    remoteAddress: serverStateJson["ios-ip"],
-    remotePort: serverStateJson["osc-port"],
-    metadata: true,
-  });
-  udpPort.open();
-  serverStateJson["osc-server-active"] = isServerRunning(udpPort);
-  return udpPort;
+  return new OSC({plugin: new OSC.WebsocketServerPlugin({port: 8000})});
+}
+
+function createMessage(...args) {
+  const url = args[0];
+  if(args.length < 2){
+    throw new Error("OSC message should have at least 2 arguments");
+  }else if (args.length === 2){
+    return new OSC.Message(url, args[1]);
+  }else{
+    // first arg is URL
+    // second and later args are data
+    return new OSC.Message(url, ...args.slice(1));
+  }
 }
 
 function runOscServer(udpPort) {

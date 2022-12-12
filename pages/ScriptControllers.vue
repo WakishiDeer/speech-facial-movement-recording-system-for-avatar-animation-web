@@ -6,6 +6,7 @@
       <!-- buttons -->
       <template v-slot:prev="{ on, attrs }">
         <v-btn
+          class="transparent"
           @click="onPrev($event, on)"
           :disabled="!stateHandler.showTransitionButton"
           fab
@@ -17,6 +18,7 @@
       </template>
       <template v-slot:next="{ on, attrs }">
         <v-btn
+          class="transparent"
           @click="onNext($event, on)"
           :disabled="!stateHandler.showTransitionButton"
           fab
@@ -127,5 +129,9 @@ export default defineComponent({
 p {
   font-family: "UD Digi Kyokasho N-R", serif;
   line-height: 180%;
+}
+
+.transparent {
+  background-color: transparent !important;
 }
 </style>

@@ -47,6 +47,9 @@
         <v-row>
           <ScriptControllers :key="rerenderNum"
                              :state-handler="stateHandler" :user-data-json="userDataJson"
+                             @on-sync-btn-clicked="startSyncRecording"
+                             @on-next-pass-through="updateSlidePassThroughNext"
+                             @on-prev-pass-through="updateSlidePassThroughPrev"
                              @on-sleep="changeTransitionBtnVisibility"
                              @on-next="updateSlideNext" @on-prev="updateSlidePrev"/>
         </v-row>
@@ -88,7 +91,7 @@ import {
   sendParticipant,
   sendConditionList,
 } from "~/plugins/state_handler";
-import HealthBoard from "~/pages/HealthBoard";
+import HealthBoard from "~/pages/HealthBoards";
 import Forms from "~/pages/Forms";
 import MediaControllers from "~/pages/MediaControllers";
 import ImageViewers from "~/pages/ImageViewers";
@@ -133,7 +136,8 @@ export default defineComponent({
         isAnimated: false,
         barColor: "blue-gray",
         // scripts
-        conditionList: ["normal", "low", "high", "muffled"],
+        // conditionList: ["normal", "low", "high", "muffled"],
+        conditionList: ["normal", "high", "muffled"],
         selectConditions: {state: "normal"},
         tasks: ["ita", "vowel"],
         selectTasks: {state: "ita"},
@@ -367,6 +371,47 @@ export default defineComponent({
         // post temporary data
         saveUserDataJsonTemp(userDataJson, stateHandler);
       };
+
+      const startSyncRecording = () => {
+        startMediaRecording(true, false);
+      }
+
+      const updateSlidePassThroughNext = (event, on) => {
+        const beforeUpdatedSlideIndex = getSlideIndex(stateHandler);
+        updateSlideIndex(beforeUpdatedSlideIndex, true, false);
+        // we do nothing for media manipulation but only for timecode
+        mediaManipulationOverallNext();
+        // transit
+        goToNextSlide(event, on);
+        // check if the slide is the last slide
+        if (isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
+          // when {currentSlideIndex === slideLength - 1 === 101} (i.e., "Finish" slide)
+          saveUserDataJson(userDataJson, stateHandler);
+        }
+      }
+
+      const mediaManipulationOverallNext = () => {
+        if (stateHandler.currentSlideIndex === stateHandler.slideLength - 1) {
+          // when {currentSlideIndex === slideLength - 1 === 101} (i.e., "Finish" slide)
+          stopMediaRecording(true, false);
+        } else {
+          // just update the timecode
+          updateTimecode(getTimeCode(), "start", true, false);
+        }
+      }
+
+      const updateSlidePassThroughPrev = (event, on) => {
+        const beforeUpdatedSlideIndex = getSlideIndex(stateHandler);
+        updateSlideIndex(beforeUpdatedSlideIndex, false, true);
+        // we do nothing for media manipulation but only for timecode
+        mediaManipulationOverallPrev();
+        // transit
+        goToPrevSlide(event, on);
+      }
+
+      const mediaManipulationOverallPrev = () => {
+        // todo implement
+      }
 
       const updateSlideNext = (event, on) => {
         // update script and slide indices
@@ -621,8 +666,11 @@ export default defineComponent({
         updateCalibrationMax,
         updateCalibrationUserData,
         changeTransitionBtnVisibility,
+        startSyncRecording,
         updateSlideNext,
         updateSlidePrev,
+        updateSlidePassThroughNext,
+        updateSlidePassThroughPrev,
       };
     }
   }

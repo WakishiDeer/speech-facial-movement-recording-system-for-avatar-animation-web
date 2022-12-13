@@ -34,9 +34,19 @@
         <v-card color="gray" height="500">
           <v-row align="center" justify="center" class="fill-height">
             <div class="pa-16">
-              <p style="font-size: 2.5rem;">
-                Press to start..
-              </p>
+              <v-col class="text-center">
+                <p style="font-size: 2.5rem;">
+                  Press to start..
+                </p>
+              </v-col>
+              <v-col>
+                <v-btn
+                  v-if="stateHandler.isSyncMode"
+                  @click="onSyncBtnClicked"
+                >
+                  Before start, press here to start media recording.
+                </v-btn>
+              </v-col>
             </div>
           </v-row>
         </v-card>
@@ -90,13 +100,21 @@ export default defineComponent({
     setup(props, {emit}) {
       const onPrev = async (event, on) => {
         await sleep(props.stateHandler.sleepTimeMs);
-        emit("on-prev", event, on);
+        if (props.stateHandler.isSyncMode) {
+          emit("on-prev-pass-through", event, on);
+        } else {
+          emit("on-prev", event, on);
+        }
       };
 
       const onNext = async (event, on) => {
         // first wait 2 seconds
         await sleep(props.stateHandler.sleepTimeMs);
-        emit("on-next", event, on);
+        if (props.stateHandler.isSyncMode) {
+          emit("on-next-pass-through", event, on);
+        } else {
+          emit("on-next", event, on);
+        }
       };
 
       const sleep = async (ms) => {
@@ -106,6 +124,10 @@ export default defineComponent({
         await new Promise(res => setTimeout(res, ms));
         // enable the buttons after sleeping
         emit("on-sleep", true);
+      };
+
+      const onSyncBtnClicked = () => {
+        emit("on-sync-btn-clicked");
       };
 
       // compute progress bar value
@@ -118,6 +140,7 @@ export default defineComponent({
       return {
         onPrev,
         onNext,
+        onSyncBtnClicked,
         progressBarValue,
       }
     }

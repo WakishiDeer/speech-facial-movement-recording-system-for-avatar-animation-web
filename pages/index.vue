@@ -2,10 +2,18 @@
   <v-app>
     <v-main>
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
-        <v-row>
-          <HealthBoard
+        <v-row justify="center">
+          <Configurations
             :stateHandler="stateHandler"
           />
+        </v-row>
+        <v-row justify="center" class="align-content-start">
+          <v-col cols="auto">
+            <HealthBoard
+              v-if="stateHandler.showHealthBoard"
+              :stateHandler="stateHandler"
+            />
+          </v-col>
         </v-row>
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
@@ -97,11 +105,13 @@ import {
 import {defineComponent, onBeforeMount, watch} from '@nuxtjs/composition-api'
 import {getTimeCode} from "~/plugins/time_handler";
 import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4, makeServerIPList} from "~/plugins/utils";
+import Configurations from "~/pages/Configurations";
 
 
 export default defineComponent({
     name: 'IndexPage',
     components: {
+      Configurations,
       HealthBoard,
       ScriptControllers, VolumeMeter, CalibrationControllers, ImageViewers, MediaControllers, Forms
     },
@@ -137,6 +147,9 @@ export default defineComponent({
         sleepTimeMs: 2000,
         // server state
         serverStateJson: {},
+        // Configurations
+        isSyncMode: true,
+        showHealthBoard: true,
         // osc
         iosIP: "127.0.0.1",
         serverIP: "127.0.0.1",

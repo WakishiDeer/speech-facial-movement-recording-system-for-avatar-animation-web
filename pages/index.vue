@@ -643,6 +643,15 @@ export default defineComponent({
         setLocalStorage(localStorage, "serverIP", stateHandler.serverIP);
       });
 
+      // watch sync mode
+      watch(() => stateHandler.isSyncMode, () => {
+        if (stateHandler.isSyncMode) {
+          stateHandler.sleepTimeMs = 100;
+        } else {
+          stateHandler.sleepTimeMs = 2000;
+        }
+      });
+
       return {
         stateHandler,
         timeHandler,

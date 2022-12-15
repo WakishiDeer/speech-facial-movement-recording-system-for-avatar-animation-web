@@ -89,7 +89,7 @@ import {
   sendTask,
   sendCondition,
   sendParticipant,
-  sendConditionList,
+  sendConditionList, requestStartOscRecording, requestStopOscRecording,
 } from "~/plugins/state_handler";
 import HealthBoard from "~/pages/HealthBoards";
 import Forms from "~/pages/Forms";
@@ -148,12 +148,12 @@ export default defineComponent({
         // slide
         currentSlideIndex: 0,
         slideLength: 0,
-        sleepTimeMs: 2000,
+        sleepTimeMs: 100,
         // server state
         serverStateJson: {},
         // Configurations
         isSyncMode: true,
-        showHealthBoard: true,
+        showHealthBoard: false,
         // osc
         iosIP: "127.0.0.1",
         serverIP: "127.0.0.1",
@@ -372,8 +372,14 @@ export default defineComponent({
         saveUserDataJsonTemp(userDataJson, stateHandler);
       };
 
-      const startSyncRecording = () => {
+      const startSyncRecording = async () => {
         startMediaRecording(true, false);
+        await requestStartOscRecording();
+      }
+
+      const stopSyncRecording = async () => {
+        stopMediaRecording(true, false);
+        await requestStopOscRecording();
       }
 
       const updateSlidePassThroughNext = (event, on) => {
@@ -391,11 +397,10 @@ export default defineComponent({
       }
 
       const mediaManipulationOverallNext = () => {
-        if (stateHandler.currentSlideIndex === stateHandler.slideLength - 1) {
-          // when {currentSlideIndex === slideLength - 1 === 101} (i.e., "Finish" slide)
-          stopMediaRecording(true, false);
+        // just update the timecode
+        if(isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
+          stopSyncRecording();
         } else {
-          // just update the timecode
           updateTimecode(getTimeCode(), "start", true, false);
         }
       }

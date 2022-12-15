@@ -1,7 +1,7 @@
 import {
   getServerIPJson,
   getServerStateJson,
-  getUserDataJson, postConditionList,
+  getUserDataJson, postConditionList, postOscRecording,
   postSaveUserDataJson,
   postServerState
 } from "~/plugins/api_functions";
@@ -95,6 +95,18 @@ export async function sendCondition(condition) {
 export async function sendTask(task) {
   const {statusCode, message} = await postServerState(task, "task", "updateTask");
   console.log("sendTask: " + message);
+}
+
+export async function requestStartOscRecording() {
+  const isStart = true;
+  const {statusCode, message} = await postOscRecording(isStart);
+  console.log("requestStartOscRecording: " + message);
+}
+
+export async function requestStopOscRecording() {
+  const isStart = false;
+  const {statusCode, message} = await postOscRecording(isStart);
+  console.log("requestStopOscRecording: " + message);
 }
 
 export function getScriptIndex(stateHandler) {

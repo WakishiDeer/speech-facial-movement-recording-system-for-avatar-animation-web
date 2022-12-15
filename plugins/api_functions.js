@@ -114,6 +114,30 @@ export async function postConditionList(messageJson) {
     });
 }
 
+export async function postOscRecording(isStart = true) {
+  let url = "";
+  if (isStart) {
+    url = "http://localhost:13000/api/startOscRecording";
+  } else {
+    url = "http://localhost:13000/api/stopOscRecording";
+  }
+
+  const headers = {
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
+  }
+  const messageJson = {
+    "isStart": isStart
+  }
+
+  return await axios.post(url, messageJson, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
 export async function postBlob(blob, extension, clipNameCandidate, stateHandler) {
   const clipName = clipNameCandidate + getTimeCode();
   const url = "http://localhost:13000/api/saveMedia";

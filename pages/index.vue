@@ -130,6 +130,7 @@ export default defineComponent({
         showMaxBtn: false,
         showVideoBtn: true,
         showTransitionButton: true,
+        showSyncBtn: false,
         // reference img
         isDisplayed: false,
         // volume bars
@@ -374,6 +375,7 @@ export default defineComponent({
 
       const startSyncRecording = async () => {
         startMediaRecording(true, false);
+        stateHandler.showSyncBtn = false;
         await requestStartOscRecording();
       }
 
@@ -398,7 +400,7 @@ export default defineComponent({
 
       const mediaManipulationOverallNext = () => {
         // just update the timecode
-        if(isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
+        if (isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
           stopSyncRecording();
         } else {
           updateTimecode(getTimeCode(), "start", true, false);
@@ -656,6 +658,13 @@ export default defineComponent({
           stateHandler.sleepTimeMs = 2000;
         }
       });
+
+      // watch audio and video btn
+      watch(() => [stateHandler.showMicBtn, stateHandler.showVideoBtn], () => {
+        // if both are pressed (hidden), show the sync btn
+        stateHandler.showSyncBtn = !stateHandler.showMicBtn && !stateHandler.showVideoBtn;
+      });
+
 
       return {
         stateHandler,

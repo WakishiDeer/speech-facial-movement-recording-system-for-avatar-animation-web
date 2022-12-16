@@ -43,6 +43,7 @@
                 <v-btn
                   v-if="stateHandler.isSyncMode"
                   @click="onSyncBtnClicked"
+                  :disabled="!stateHandler.showSyncBtn"
                 >
                   Before start, press here to start media recording.
                 </v-btn>

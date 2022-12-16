@@ -28,7 +28,7 @@ function updateServerState(item, value) {
       oscClient.close();
       oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
       oscClient.open();
-      sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+      sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
     }
   }
   if (item === "ios-ip") {
@@ -36,7 +36,7 @@ function updateServerState(item, value) {
     oscClient.close();
     oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
     oscClient.open();
-    sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+    sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
   }
   // change name of the Live Link Face
   if (item === "participant" || item === "task" || item === "condition") {
@@ -56,8 +56,13 @@ function initializeUDPPort(address, port, remoteAddress) {
   )
 }
 
+function sendMessage(addrArgs) {
+  console.log(addrArgs);
+  oscClient.send(addrArgs);
+}
+
 function sendTargetAddresses(hostIP, iosIP, oscPort) {
-  oscClient.send({
+  const addrArgsSetSendTarget = {
     address: "/OSCSetSendTarget",
     args: [
       {
@@ -69,8 +74,10 @@ function sendTargetAddresses(hostIP, iosIP, oscPort) {
         value: oscPort
       }
     ]
-  });
-  oscClient.send({
+  };
+  sendMessage(addrArgsSetSendTarget);
+
+  const addrArgsAddLiveLinkAddress = {
     address: "/AddLiveLinkAddress",
     args: [
       {
@@ -82,7 +89,8 @@ function sendTargetAddresses(hostIP, iosIP, oscPort) {
         value: oscPort
       }
     ]
-  });
+  }
+  sendMessage(addrArgsAddLiveLinkAddress);
 }
 
 function sendName(participant, task, condition) {
@@ -129,7 +137,7 @@ function stopRecording() {
 let oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
 
 oscClient.on("message", (oscMsg, timeTag, info) => {
-  console.info(oscMsg);
+  // console.info(oscMsg);
   // console.info(timeTag);
 });
 
@@ -137,7 +145,7 @@ oscClient.open();
 
 oscClient.on("ready", () => {
   // set target addresses
-  sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+  sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
   sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
 });
 

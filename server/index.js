@@ -22,7 +22,7 @@ function getServerStateJson() {
 
 function updateServerState(item, value) {
   // restart osc server
-  if (item === "server-ip" || item === "ios-ip") {
+  if (item === "server-ip") {
     if (isIPAddressExists(value)) {
       serverStateJson[item] = value;
       oscClient.close();
@@ -30,6 +30,13 @@ function updateServerState(item, value) {
       oscClient.open();
       sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
     }
+  }
+  if (item === "ios-ip") {
+    serverStateJson[item] = value;
+    oscClient.close();
+    oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
+    oscClient.open();
+    sendTargetAddresses(oscClient, serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
   }
   // change name of the Live Link Face
   if (item === "participant" || item === "task" || item === "condition") {
@@ -124,7 +131,6 @@ let oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson[
 oscClient.on("message", (oscMsg, timeTag, info) => {
   console.info(oscMsg);
   // console.info(timeTag);
-  console.info("message from: " + info);
 });
 
 oscClient.open();
@@ -346,12 +352,26 @@ app.get("/api/getServerStateJson", async (req, res) => {
 
 module.exports = app;
 
+
 // utils
 const {networkInterfaces} = require("os");
 
 function isIPAddressExists(ipAddress) {
-  const ipAddressJson = getIpAddressJson();
-  return ipAddress in ipAddressJson;
+  const serverIpList = makeServerIPList(getIpAddressJson());
+  return serverIpList.includes(ipAddress);
+}
+
+function makeServerIPList(serverIPJson) {
+  // given server ip json, return server ip list
+  const serverIPList = [];
+  for (const key in serverIPJson) {
+    for (const ip of serverIPJson[key]) {
+      if (ip["family"] === "IPv4") {
+        serverIPList.push(ip["address"]);
+      }
+    }
+  }
+  return serverIPList;
 }
 
 function getIpAddressJson() {

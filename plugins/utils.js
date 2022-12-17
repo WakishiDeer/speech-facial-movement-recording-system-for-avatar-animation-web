@@ -72,15 +72,17 @@ export function isRmsZero(rms) {
   return rms === 0;
 }
 
-export function checkExclusive(isNext, isPrev) {
+export function checkExclusive(isNext, isPrev, tolerateFalse = false) {
   if ((isNext && isPrev) || (!isNext && !isPrev)) {
-    throw new Error("isNext and isPrev are not exclusive");
+    if (!tolerateFalse) {
+      throw new Error("isNext and isPrev are not exclusive");
+    }
   }
 }
 
 export function isFirstSlide(updatedSlideIndex, isNext, isPrev) {
   try {
-    checkExclusive(isNext, isPrev);
+    checkExclusive(isNext, isPrev, true);
   } catch (err) {
     console.log(err);
   }
@@ -96,7 +98,7 @@ export function isFirstSlide(updatedSlideIndex, isNext, isPrev) {
 
 export function isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength) {
   try {
-    checkExclusive(isNext, isPrev);
+    checkExclusive(isNext, isPrev, true);
   } catch (err) {
     console.log(err);
   }

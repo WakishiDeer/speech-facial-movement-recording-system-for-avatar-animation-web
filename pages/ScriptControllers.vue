@@ -102,7 +102,7 @@ export default defineComponent({
       const onPrev = async (event, on) => {
         await sleep(props.stateHandler.sleepTimeMs);
         if (props.stateHandler.isSyncMode) {
-          emit("on-prev-pass-through", event, on);
+          // do nothing
         } else {
           emit("on-prev", event, on);
         }

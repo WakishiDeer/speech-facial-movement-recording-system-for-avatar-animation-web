@@ -11,7 +11,7 @@ let serverStateJson = {
   "api-port": 13000,
   "osc-port": 8000,
   "takeNum": 0,
-  "isRecording": false,
+  "is-recording": false,
   "slate": "",
 };
 const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
@@ -21,39 +21,34 @@ function getServerStateJson() {
 }
 
 function updateServerState(item, value) {
-  // restart osc server
-  if (item === "server-ip") {
-    if (isIPAddressExists(value)) {
-      serverStateJson[item] = value;
+  if (item === "server-ip" || item === "ios-ip") {
+    serverStateJson[item] = value;
+    // if server ip or ios ip is changed, update osc client
+    if (oscClient !== null) {
       oscClient.close();
+    }
+    if (isNotLocalHostAddress(serverStateJson["server-ip"]) && isNotLocalHostAddress(serverStateJson["ios-ip"])) {
+      // if not local address of both server and ios, start osc server
       oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
-      oscClient.open();
+      startOscServer();
       sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
     }
-  }
-  if (item === "ios-ip") {
+  } else if (item === "participant" || item === "task" || item === "condition") {
     serverStateJson[item] = value;
-    oscClient.close();
-    oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
-    oscClient.open();
-    sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
-  }
-  // change name of the Live Link Face
-  if (item === "participant" || item === "task" || item === "condition") {
-    serverStateJson[item] = value;
-    sendName(serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+    if (oscClient !== null) {
+      sendName(serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+    }
   }
 }
 
 function initializeUDPPort(address, port, remoteAddress) {
   return new osc.UDPPort({
-      localAddress: address,
-      localPort: port,
-      remoteAddress: remoteAddress,
-      remotePort: port,
-      metadata: true,
-    }
-  )
+    localAddress: address,
+    localPort: port,
+    remoteAddress: remoteAddress,
+    remotePort: port,
+    metadata: true
+  });
 }
 
 function sendMessage(addrArgs) {
@@ -134,25 +129,28 @@ function stopRecording() {
 
 // osc settings
 // initialize osc server
-let oscClient = initializeUDPPort(serverStateJson["server-ip"], serverStateJson["osc-port"], serverStateJson["ios-ip"]);
+function startOscServer() {
+  oscClient.on("message", (oscMsg, timeTag, info) => {
+    console.info(oscMsg);
+  });
 
-oscClient.on("message", (oscMsg, timeTag, info) => {
-  // console.info(oscMsg);
-  // console.info(timeTag);
-});
+  oscClient.open();
 
-oscClient.open();
+  oscClient.on("ready", () => {
+    if (isNotLocalHostAddress(serverStateJson["ios-ip"])) {
+      // set target addresses
+      sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
+      sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+    }
+  });
 
-oscClient.on("ready", () => {
-  // set target addresses
-  sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
-  sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
-});
+  oscClient.on("error", (err) => {
+    console.error(err);
+  });
+}
 
-oscClient.on("error", (err) => {
-  console.error(err);
-});
 
+// api
 const app = require("express")();
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -228,9 +226,13 @@ app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
 app.post("/api/updateIosIP", async (req, res) => {
   try {
     const iosIP = req.body["ios-ip"];
-    updateServerState("ios-ip", iosIP);
-    console.info("ios IP has been updated: " + iosIP);
-    res.send("iOS IP has been updated successfully...: " + iosIP);
+    if (isNotLocalHostAddress(iosIP)) {
+      updateServerState("ios-ip", iosIP);
+      console.info("ios IP has been updated: " + iosIP);
+      res.status(200).send("iOS IP has been updated successfully...: " + iosIP);
+    } else {
+      res.status(204).send("iOS IP is invalid: " + iosIP);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).send("error");
@@ -240,10 +242,13 @@ app.post("/api/updateIosIP", async (req, res) => {
 app.post("/api/updateServerIP", async (req, res) => {
   try {
     const hostIP = req.body["server-ip"];
-    updateServerState("server-ip", hostIP);
-    console.info("server IP has been updated: " + hostIP);
-    // initialize osc server
-    res.send("Server IP Address has been updated successfully...: " + hostIP);
+    if (isNotLocalHostAddress(hostIP)) {
+      updateServerState("server-ip", hostIP);
+      console.info("server IP has been updated: " + hostIP);
+    } else {
+      // initialize osc server
+      res.send("Server IP Address has been updated successfully...: " + hostIP);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).send("error");
@@ -300,6 +305,7 @@ app.post("/api/updateTask", async (req, res) => {
 app.post("/api/startOscRecording", (req, res) => {
   try {
     startRecording();
+    serverStateJson["is-recording"] = true;
     res.send("OSC recording has been started...");
   } catch (err) {
     console.error(err);
@@ -310,6 +316,7 @@ app.post("/api/startOscRecording", (req, res) => {
 app.post("/api/stopOscRecording", (req, res) => {
   try {
     stopRecording();
+    serverStateJson["is-recording"] = false;
     res.send("OSC recording has been stopped...");
   } catch (err) {
     console.error(err);
@@ -363,10 +370,27 @@ module.exports = app;
 
 // utils
 const {networkInterfaces} = require("os");
+const dns = require("dns");
+const dnsPromises = dns.promises;
 
-function isIPAddressExists(ipAddress) {
+function isLocalIpAddressExists(ipAddress) {
   const serverIpList = makeServerIPList(getIpAddressJson());
   return serverIpList.includes(ipAddress);
+}
+
+function isNotLocalHostAddress(ipAddress) {
+  return ipAddress !== "127.0.0.1"
+}
+
+async function isReachable(ipAddress, port) {
+  return await dnsPromises.lookup(ipAddress)
+    .then(({address, family}) => {
+      return true;
+    })
+    .catch((err) => {
+      console.error(err);
+      return false;
+    });
 }
 
 function makeServerIPList(serverIPJson) {
@@ -409,3 +433,6 @@ async function writeJsonFile(filePath, req) {
   fs.writeFileSync(filePath, JSON.stringify(req.body));
   console.log("User data has been saved at: " + filePath);
 }
+
+
+let oscClient = null;

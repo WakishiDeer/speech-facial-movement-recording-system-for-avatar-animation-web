@@ -13,6 +13,8 @@ let serverStateJson = {
   "takeNum": 0,
   "is-recording": false,
   "slate": "",
+  "battery": 0.0,
+  "thermal": 0,
 };
 const userDataRootPath = path.resolve(__dirname, "../", "assets", "user_data");
 
@@ -79,11 +81,11 @@ function sendTargetAddresses(hostIP, iosIP, oscPort) {
     args: [
       {
         type: "s",
-        value: iosIP
+        value: hostIP
       },
       {
         type: "i",
-        value: oscPort
+        value: oscPort + 1
       }
     ]
   }
@@ -134,10 +136,19 @@ function stopRecording() {
 function startOscServer() {
   oscClient.on("message", (oscMsg, timeTag, info) => {
     switch (oscMsg.address) {
-      case "RecordStartConfirm":
+      case "/OSCSetSendTargetConfirm":
+        updateServerState("osc-server-active", true);
+        break;
+      case "/Battery":
+        updateServerState("battery", oscMsg.args[0].value);
+        break;
+      case "/Thermal":
+        updateServerState("thermal", oscMsg.args[0].value);
+        break;
+      case "/RecordStartConfirm":
         updateServerState("is-recording", true);
         break;
-      case "RecordStopConfirm":
+      case "/RecordStopConfirm":
         updateServerState("is-recording", false);
         break;
       default:
@@ -152,7 +163,7 @@ function startOscServer() {
     if (isNotLocalHostAddress(serverStateJson["ios-ip"])) {
       // set target addresses
       sendTargetAddresses(serverStateJson["server-ip"], serverStateJson["ios-ip"], serverStateJson["osc-port"]);
-      sendName(oscClient, serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
+      sendName(serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
     }
   });
 

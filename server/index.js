@@ -38,6 +38,8 @@ function updateServerState(item, value) {
     if (oscClient !== null) {
       sendName(serverStateJson["participant"], serverStateJson["task"], serverStateJson["condition"]);
     }
+  } else {
+    serverStateJson[item] = value;
   }
 }
 
@@ -90,7 +92,7 @@ function sendTargetAddresses(hostIP, iosIP, oscPort) {
 
 function sendName(participant, task, condition) {
   // set slate name
-  serverStateJson["slate"] = participant + "_" + task + "_" + condition;
+  updateServerState("slate", participant + "_" + task + "_" + condition);
   oscClient.send({
     "address": "/Slate",
     "args": [{
@@ -131,7 +133,17 @@ function stopRecording() {
 // initialize osc server
 function startOscServer() {
   oscClient.on("message", (oscMsg, timeTag, info) => {
-    console.info(oscMsg);
+    switch (oscMsg.address) {
+      case "RecordStartConfirm":
+        updateServerState("is-recording", true);
+        break;
+      case "RecordStopConfirm":
+        updateServerState("is-recording", false);
+        break;
+      default:
+        console.log(oscMsg);
+        break;
+    }
   });
 
   oscClient.open();
@@ -305,7 +317,6 @@ app.post("/api/updateTask", async (req, res) => {
 app.post("/api/startOscRecording", (req, res) => {
   try {
     startRecording();
-    serverStateJson["is-recording"] = true;
     res.send("OSC recording has been started...");
   } catch (err) {
     console.error(err);
@@ -316,7 +327,6 @@ app.post("/api/startOscRecording", (req, res) => {
 app.post("/api/stopOscRecording", (req, res) => {
   try {
     stopRecording();
-    serverStateJson["is-recording"] = false;
     res.send("OSC recording has been stopped...");
   } catch (err) {
     console.error(err);
@@ -326,9 +336,7 @@ app.post("/api/stopOscRecording", (req, res) => {
 
 app.get("/api/loadJson", async (req, res) => {
   try {
-    console.log(serverStateJson);
     const filePath = getUserDataJsonPath(userDataRootPath, serverStateJson["participant"]);
-
     const userData = fs.readFileSync(filePath, "utf-8");
     // if valid data, return it as success
     res.status(200).json(JSON.parse(userData));

@@ -1,14 +1,27 @@
 <template>
-  <v-row justify="center">
-    <v-card max-width="100%">
-      <v-card-text  v-for="(val, key) in stateHandler.serverStateJson" :key="key">
-        <v-icon :color="oscServerColor">
-          mdi-server
-        </v-icon>
-        {{ key }}: {{ val }}
-      </v-card-text>
-    </v-card>
-  </v-row>
+  <v-card class="justify-center">
+    <v-card-text class="text-center">
+      <v-icon :color="oscServerActivityColor">
+        mdi-server
+      </v-icon>
+      Server Activity: {{ stateHandler.serverStateJson["osc-server-active"] }}
+    </v-card-text>
+    <v-card-text class="text-center">
+      <v-icon :color="oscRecordingColor">
+        mdi-radiobox-marked
+      </v-icon>
+      Server Recording: {{ stateHandler.serverStateJson["is-recording"] }}
+    </v-card-text>
+    <v-card-text class="text-center">
+      <v-icon :color="mediaRecordingColor">
+        mdi-radiobox-marked
+      </v-icon>
+      Browser Recording: {{ stateHandler.isMediaRecording }}
+    </v-card-text>
+    <v-card-text class="text-center">
+      {{ stateHandler.conditionProgress }}
+    </v-card-text>
+  </v-card>
 </template>
 
 <script>
@@ -21,21 +34,41 @@ export default defineComponent({
     stateHandler: {},
   },
   setup(props, {emit}) {
-    let oscServerColor = ref("grey darken-3");
-    let serverStatusMessage = ref("OSC server is not running");
+    let oscServerActivityColor = ref("grey darken-3");
+    let oscRecordingColor = ref("grey darken-3");
+    let mediaRecordingColor = ref("grey darken-3");
+
     watch(() => props.stateHandler.serverStateJson["osc-server-active"], (isOscActive) => {
       // change color
       if (isOscActive) {
-        oscServerColor.value = "green darken-3"
-        serverStatusMessage.value = "OSC server is running"
+        oscServerActivityColor.value = "green darken-3"
       } else {
-        oscServerColor.value = "grey darken-3"
-        serverStatusMessage.value = "OSC server is not running"
+        oscServerActivityColor.value = "grey darken-3"
       }
     });
+
+    watch(() => props.stateHandler.serverStateJson["is-recording"], (isRecording) => {
+      // change color
+      if (isRecording) {
+        oscRecordingColor.value = "red darken-3"
+      } else {
+        oscRecordingColor.value = "grey darken-3"
+      }
+    });
+
+    watch(() => props.stateHandler.isMediaRecording, (isRecording) => {
+      // change color
+      if (isRecording) {
+        mediaRecordingColor.value = "red darken-3"
+      } else {
+        mediaRecordingColor.value = "grey darken-3"
+      }
+    })
+
     return {
-      oscServerColor,
-      serverStatusMessage,
+      oscServerActivityColor,
+      oscRecordingColor,
+      mediaRecordingColor,
     };
   },
 })

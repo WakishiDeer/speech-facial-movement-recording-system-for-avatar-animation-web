@@ -35,18 +35,93 @@
           <v-row align="center" justify="center" class="fill-height">
             <div class="pa-16">
               <v-col class="text-center">
-                <p style="font-size: 2.5rem;">
+                <p
+                  v-if="!stateHandler.isSyncMode"
+                  style="font-size: 2.5rem;">
                   Press to start..
                 </p>
               </v-col>
-              <v-col>
+
+              <v-col class="text-center">
                 <v-btn
+                  width="100%"
                   v-if="stateHandler.isSyncMode"
                   @click="onSyncBtnClicked"
                   :disabled="!stateHandler.showSyncBtn"
                 >
-                  Before start, press here to start media recording.
+                  <v-icon :color="mediaRecordingColor">
+                    mdi-radiobox-marked
+                  </v-icon>
+                  Start Sync
                 </v-btn>
+              </v-col>
+
+              <v-col class="text-center">
+                <v-dialog
+                  v-model="stateHandler.showDialogSmartphone"
+                  max-width="70%"
+                >
+                  <template v-slot:activator="{ on }">
+                    <v-btn
+                      width="100%"
+                      v-if="stateHandler.isSyncMode"
+                      @click="onBeepSyncBtnClicked"
+                      :disabled="!stateHandler.showBeepSyncBtn"
+                      v-on="on"
+                    >
+                      <v-icon color="primary">
+                        mdi-cellphone
+                      </v-icon>
+                      Smartphone Sync
+                    </v-btn>
+                  </template>
+                  <v-card>
+                    <v-card-text class="text-h4">
+                      <v-icon color="secondary">
+                        mdi-play
+                      </v-icon>
+                      <v-icon color="secondary">
+                        mdi-cellphone
+                      </v-icon>
+                      Play and place your smartphone in front of the camera!
+                    </v-card-text>
+                    <v-btn
+                      @click="onBeepSyncConfirmBtnClicked"
+                      color="primary"
+                      width="100%"
+                    >
+                      Done!
+                    </v-btn>
+                  </v-card>
+                </v-dialog>
+              </v-col>
+
+              <v-col>
+                <v-dialog
+                  v-model="stateHandler.showDialogVideo"
+                  max-width="70%"
+                  hight="70%"
+                >
+                  <template v-slot:activator="{ on }">
+                    <v-btn
+                      width="100%"
+                      v-if="stateHandler.isSyncMode"
+                      :disabled="!stateHandler.showVideoSyncBtn"
+                      @click="onVideoSyncBtnClicked"
+                      v-on="on"
+                    >
+                      <v-icon color="primary">
+                        mdi-face-recognition
+                      </v-icon>
+                      Video Sync
+                    </v-btn>
+                  </template>
+                  <iframe width="720" height="480" src="https://www.youtube.com/embed/_66SaA2luMY"
+                          title="YouTube video player" frameborder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowfullscreen></iframe>
+
+                </v-dialog>
               </v-col>
             </div>
           </v-row>
@@ -89,7 +164,7 @@
 </template>
 
 <script>
-import {computed, defineComponent} from '@nuxtjs/composition-api'
+import {computed, defineComponent, onMounted, ref} from '@nuxtjs/composition-api';
 import {getScriptIndex, getScriptLength} from "~/plugins/state_handler";
 
 export default defineComponent({
@@ -98,7 +173,10 @@ export default defineComponent({
       stateHandler: {},
       userDataJson: {},
     },
+    components: {},
     setup(props, {emit}) {
+      let mediaRecordingColor = ref("red darken-3");
+
       const onPrev = async (event, on) => {
         await sleep(props.stateHandler.sleepTimeMs);
         if (props.stateHandler.isSyncMode) {
@@ -129,6 +207,23 @@ export default defineComponent({
 
       const onSyncBtnClicked = () => {
         emit("on-sync-btn-clicked");
+        props.stateHandler.showBeepSyncBtn = true;
+      };
+
+      const onBeepSyncBtnClicked = () => {
+        emit("on-beep-sync-btn-clicked");
+      };
+
+      const onBeepSyncConfirmBtnClicked = () => {
+        emit("on-beep-sync-confirm-btn-clicked");
+      };
+
+      const onVideoSyncBtnClicked = () => {
+        emit("on-video-sync-btn-clicked");
+      };
+
+      const onVideoSyncClosed= () => {
+        emit("on-video-sync-closed");
       };
 
       // compute progress bar value
@@ -138,13 +233,20 @@ export default defineComponent({
         return (idx / len) * 100;
       });
 
+      // specify the location of the video
+
       return {
         onPrev,
         onNext,
         onSyncBtnClicked,
+        onBeepSyncBtnClicked,
+        onBeepSyncConfirmBtnClicked,
+        onVideoSyncBtnClicked,
+        onVideoSyncClosed,
         progressBarValue,
+        mediaRecordingColor,
       }
-    }
+    },
   }
 );
 

@@ -2,7 +2,6 @@
   <v-app>
     <v-main>
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
-
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
                  @update-id="updateID" @update-ios-ip="updateIosIP" @update-server-ip="updateServerIP"
@@ -51,6 +50,9 @@
           <ScriptControllers :key="rerenderNum"
                              :state-handler="stateHandler" :user-data-json="userDataJson"
                              @on-sync-btn-clicked="startSyncRecording"
+                             @on-beep-sync-btn-cliced="startBeepSyncRecording"
+                             @on-beep-sync-confirm-btn-clicked="stopBeepSyncRecording"
+                             @on-video-sync-btn-clicked="startSyncVideo"
                              @on-next-pass-through="updateSlidePassThroughNext"
                              @on-sleep="changeTransitionBtnVisibility"
                              @on-next="updateSlideNext" @on-prev="updateSlidePrev"/>
@@ -70,28 +72,30 @@ p {
 <script>
 import {reactive, ref} from "vue";
 import {
-  getLocalStorage,
-  loadUserDataJson,
-  saveUserDataJson,
-  setLocalStorage,
-  goToNextSlide,
-  goToPrevSlide,
-  getCurrentScriptNoContent,
-  getScriptIndex,
-  getTask,
   getCondition,
+  getCurrentScriptNoContent,
+  getLocalStorage,
+  getScriptIndex,
+  getScriptLength,
   getSlideIndex,
   getSlideLength,
-  getScriptLength,
-  saveUserDataJsonTemp,
-  sendIosIP,
+  getTask,
+  goToNextSlide,
+  goToPrevSlide,
   loadServerIPJson,
-  sendServerIP,
   loadServerStateJson,
-  sendTask,
+  loadUserDataJson,
+  requestStartOscRecording,
+  requestStopOscRecording,
+  saveUserDataJson,
+  saveUserDataJsonTemp,
   sendCondition,
+  sendConditionList,
+  sendIosIP,
   sendParticipant,
-  sendConditionList, requestStartOscRecording, requestStopOscRecording,
+  sendServerIP,
+  sendTask,
+  setLocalStorage,
 } from "~/plugins/state_handler";
 import HealthBoard from "~/pages/HealthBoards";
 import Forms from "~/pages/Forms";
@@ -151,6 +155,10 @@ export default defineComponent({
         showVideoBtn: true,
         showTransitionButton: true,
         showSyncBtn: false,
+        showBeepSyncBtn: false,
+        showDialogSmartphone: false,
+        showDialogVideo: false,
+        showVideoSyncBtn: false,
         // reference img
         isDisplayed: false,
         // volume bars
@@ -160,7 +168,7 @@ export default defineComponent({
         isMediaRecording: false,
         // scripts
         // conditionList: ["normal", "low", "high", "muffled"],
-        conditionList: ["normal", "high", "muffled"],
+        conditionList: ["normal", "muffled", "high"],
         conditionProgress: {
           normal: 0,
           high: 0,
@@ -406,6 +414,24 @@ export default defineComponent({
         await requestStartOscRecording();
       }
 
+      const startBeepSyncRecording = () => {
+        stateHandler.showDialogSmartphone = true;
+      }
+
+      const stopBeepSyncRecording = () => {
+        stateHandler.showBeepSyncBtn = false
+        stateHandler.showDialogSmartphone = false;
+        stateHandler.showVideoSyncBtn = true;
+      }
+
+      const startSyncVideo = () => {
+        stateHandler.showDialogVideo = true;
+      }
+
+      const stopSyncVideo = () => {
+        stateHandler.showVideoSyncBtn = false;
+      }
+
       const stopSyncRecording = async () => {
         stopMediaRecording(true, false);
         await requestStopOscRecording();
@@ -530,7 +556,10 @@ export default defineComponent({
         }
       };
 
-      sendConditionList(stateHandler.conditionList);
+      const loadConditionList = (userDataJson) => {
+        stateHandler.conditionList = userDataJson["data"][getTask(stateHandler)]["conditions"];
+        sendConditionList(stateHandler.conditionList);
+      }
 
       onBeforeMount(async () => {
         // default loading
@@ -565,6 +594,9 @@ export default defineComponent({
         } catch (err) {
           console.error(err);
         }
+
+        // update conditionList
+        loadConditionList(userDataJson);
 
         // load server's available IP addresses
         try {
@@ -655,7 +687,7 @@ export default defineComponent({
       });
 
       watch(() => stateHandler.conditionList, () => {
-        if (stateHandler.conditionList.length === 0 && stateHandler.isSyncMode) {
+        if (stateHandler.conditionList.length === 0 && stateHandler.isSyncMode && stateHandler.isMediaRecording) {
           stopSyncRecording();
         }
       }, {deep: true});
@@ -667,6 +699,12 @@ export default defineComponent({
         if (stateHandler.slideLength - 1 <= stateHandler.conditionProgress[condition]) {
           // remove condition from the list
           stateHandler.conditionList = stateHandler.conditionList.filter((item) => item !== condition);
+        }
+        // sleep time should be longer just before the end of slide
+        if (stateHandler.slideLength - 2 <= stateHandler.conditionProgress[condition]) {          // sleep time change
+          stateHandler.sleepTimeMs = 2000;
+        }else {
+          stateHandler.sleepTimeMs = 100;
         }
       }, {deep: true});
 
@@ -687,6 +725,7 @@ export default defineComponent({
         const localStorage = window.localStorage;
         setLocalStorage(localStorage, "iosIP", stateHandler.iosIP);
       });
+
       watch(() => stateHandler.serverIP, async () => {
         await sendServerIP(stateHandler.serverIP);
         const localStorage = window.localStorage;
@@ -742,6 +781,11 @@ export default defineComponent({
         updateCalibrationUserData,
         changeTransitionBtnVisibility,
         startSyncRecording,
+        stopSyncRecording,
+        startSyncVideo,
+        stopSyncVideo,
+        startBeepSyncRecording,
+        stopBeepSyncRecording,
         updateSlideNext,
         updateSlidePrev,
         updateSlidePassThroughNext,

@@ -72,15 +72,17 @@ export function isRmsZero(rms) {
   return rms === 0;
 }
 
-export function checkExclusive(isNext, isPrev) {
+export function checkExclusive(isNext, isPrev, tolerateFalse = false) {
   if ((isNext && isPrev) || (!isNext && !isPrev)) {
-    throw new Error("isNext and isPrev are not exclusive");
+    if (!tolerateFalse) {
+      throw new Error("isNext and isPrev are not exclusive");
+    }
   }
 }
 
 export function isFirstSlide(updatedSlideIndex, isNext, isPrev) {
   try {
-    checkExclusive(isNext, isPrev);
+    checkExclusive(isNext, isPrev, true);
   } catch (err) {
     console.log(err);
   }
@@ -96,7 +98,7 @@ export function isFirstSlide(updatedSlideIndex, isNext, isPrev) {
 
 export function isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength) {
   try {
-    checkExclusive(isNext, isPrev);
+    checkExclusive(isNext, isPrev, true);
   } catch (err) {
     console.log(err);
   }
@@ -109,4 +111,22 @@ export function isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength) {
   if (isPrev) {
     return updatedSlideIndex === slideLength - 2;
   }
+}
+
+export function makeServerIPList(serverIPJson) {
+  // given server ip json, return server ip list
+  const serverIPList = [];
+  for (const key in serverIPJson) {
+    for (const ip of serverIPJson[key]) {
+      if (ip["family"] === "IPv4") {
+        serverIPList.push(ip["address"]);
+      }
+    }
+  }
+  return serverIPList;
+}
+
+export function isValidIPv4(ip) {
+  const regex = new RegExp("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+  return regex.test(ip);
 }

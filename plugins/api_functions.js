@@ -21,6 +21,38 @@ export async function getUserDataJson(participant) {
   return {resData, statusCode, message};
 }
 
+export async function getServerIPJson() {
+  const url = "http://localhost:13000/api/getServerIPJson";
+  let resData, statusCode, message;
+  await axios.get(url)
+    .then((res) => {
+      const ret = encloseStatusMessageGet(res);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
+    })
+    .catch((err) => {
+      throw err;
+    });
+  return {resData, statusCode, message};
+}
+
+export async function getServerStateJson() {
+  const url = "http://localhost:13000/api/getServerStateJson";
+  let resData, statusCode, message;
+  await axios.get(url)
+    .then((res) => {
+      const ret = encloseStatusMessageGet(res);
+      resData = ret.resData;
+      statusCode = ret.statusCode;
+      message = ret.message;
+    })
+    .catch((err) => {
+      throw err;
+    });
+  return {resData, statusCode, message};
+}
+
 export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = false) {
   // first, remove `data` from userDataJson
   const userDataJsonWithoutData = userDataJson["data"];
@@ -39,6 +71,65 @@ export async function postSaveUserDataJson(userDataJson, stateHandler, isTemp = 
   };
 
   return await axios.post(url, userDataJsonWithoutData, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
+export async function postServerState(stateVal, stateName, urlSuffix) {
+  const url = "http://localhost:13000/api/" + urlSuffix;
+
+  const headers = {
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
+  }
+  const messageJson = {
+    [stateName]: stateVal
+  }
+
+  return await axios.post(url, messageJson, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
+export async function postConditionList(messageJson) {
+  const url = "http://localhost:13000/api/updateConditionList";
+
+  const headers = {
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
+  }
+
+  return await axios.post(url, messageJson, {headers: headers})
+    .then((res) => {
+      return encloseStatusMessagePost(res.status);
+    })
+    .catch((err) => {
+      return encloseStatusMessagePost(err.response.status);
+    });
+}
+
+export async function postOscRecording(isStart = true) {
+  let url = "";
+  if (isStart) {
+    url = "http://localhost:13000/api/startOscRecording";
+  } else {
+    url = "http://localhost:13000/api/stopOscRecording";
+  }
+
+  const headers = {
+    "Content-Type": "application/json", "date-time": getDateTimeCode(),
+  }
+  const messageJson = {
+    "isStart": isStart
+  }
+
+  return await axios.post(url, messageJson, {headers: headers})
     .then((res) => {
       return encloseStatusMessagePost(res.status);
     })

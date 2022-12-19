@@ -1,5 +1,5 @@
 <template>
-  <v-col cols="1">
+  <v-col cols="auto">
     <v-btn
       :disabled="!stateHandler.showMicBtn"
       class="mx-2"
@@ -31,7 +31,7 @@
 <script>
 import {setUpMic} from "~/plugins/audio_handler";
 import {setUpMediaVideo, setUpMediaWave} from "~/plugins/media_stream_recorder";
-import {defineComponent, onMounted} from '@nuxtjs/composition-api'
+import {defineComponent} from '@nuxtjs/composition-api'
 
 
 export default defineComponent({

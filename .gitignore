@@ -96,3 +96,5 @@ assets/user_data/user_uuid_mapping.json
 # User data
 assets/user_data/*.wav
 assets/user_data/*.mkv
+
+assets/user_data

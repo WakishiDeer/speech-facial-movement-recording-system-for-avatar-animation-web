@@ -4,7 +4,8 @@
       <v-container fluid fill-height class="mx-auto" v-if="userDataJson">
         <v-row align="center" justify="center" class="d-flex justify-space-around mx-auto text-center">
           <Forms :state-handler="stateHandler" :user-data-json="userDataJson"
-                 @update-id="updateID" @update-condition="updateCondition"
+                 @update-id="updateID" @update-ios-ip="updateIosIP" @update-server-ip="updateServerIP"
+                 @update-condition="updateCondition"
                  @update-task="updateTask"/>
 
           <MediaControllers :state-handler="stateHandler" :audio-handler="audioHandler" :video-handler="videoHandler"
@@ -25,6 +26,21 @@
                                   @update-calibration-user-data="updateCalibrationUserData"/>
         </v-row>
 
+        <v-row justify="center">
+          <v-col>
+            <Configurations
+              class="align-self-center"
+              :stateHandler="stateHandler"
+            />
+          </v-col>
+          <v-col>
+            <HealthBoard
+              v-if="stateHandler.showHealthBoard"
+              :stateHandler="stateHandler"
+            />
+          </v-col>
+        </v-row>
+
         <v-row>
           <VolumeMeter :audio-handler="audioHandler" :state-handler="stateHandler"/>
           {{ audioHandler.rmsValue }}
@@ -33,6 +49,11 @@
         <v-row>
           <ScriptControllers :key="rerenderNum"
                              :state-handler="stateHandler" :user-data-json="userDataJson"
+                             @on-sync-btn-clicked="startSyncRecording"
+                             @on-beep-sync-btn-cliced="startBeepSyncRecording"
+                             @on-beep-sync-confirm-btn-clicked="stopBeepSyncRecording"
+                             @on-video-sync-btn-clicked="startSyncVideo"
+                             @on-next-pass-through="updateSlidePassThroughNext"
                              @on-sleep="changeTransitionBtnVisibility"
                              @on-next="updateSlideNext" @on-prev="updateSlidePrev"/>
         </v-row>
@@ -51,21 +72,32 @@ p {
 <script>
 import {reactive, ref} from "vue";
 import {
-  getLocalStorage,
-  loadUserDataJson,
-  saveUserDataJson,
-  setLocalStorage,
-  goToNextSlide,
-  goToPrevSlide,
-  getCurrentScriptNoContent,
-  getScriptIndex,
-  getTask,
   getCondition,
+  getCurrentScriptNoContent,
+  getLocalStorage,
+  getScriptIndex,
+  getScriptLength,
   getSlideIndex,
   getSlideLength,
-  getScriptLength,
+  getTask,
+  goToNextSlide,
+  goToPrevSlide,
+  loadServerIPJson,
+  loadServerStateJson,
+  loadUserDataJson,
+  requestStartOscRecording,
+  requestStopOscRecording,
+  saveUserDataJson,
   saveUserDataJsonTemp,
+  sendCondition,
+  sendConditionList,
+  sendIosIP,
+  sendParticipant,
+  sendServerIP,
+  sendTask,
+  setLocalStorage,
 } from "~/plugins/state_handler";
+import HealthBoard from "~/pages/HealthBoards";
 import Forms from "~/pages/Forms";
 import MediaControllers from "~/pages/MediaControllers";
 import ImageViewers from "~/pages/ImageViewers";
@@ -81,12 +113,35 @@ import {
 } from "~/plugins/media_stream_recorder";
 import {defineComponent, onBeforeMount, watch} from '@nuxtjs/composition-api'
 import {getTimeCode} from "~/plugins/time_handler";
-import {checkExclusive, isFirstSlide, isLastSlide} from "~/plugins/utils";
+import {checkExclusive, isFirstSlide, isLastSlide, isValidIPv4, makeServerIPList} from "~/plugins/utils";
+import Configurations from "~/pages/Configurations";
 
 
 export default defineComponent({
     name: 'IndexPage',
-    components: {ScriptControllers, VolumeMeter, CalibrationControllers, ImageViewers, MediaControllers, Forms},
+    components: {
+      Configurations,
+      HealthBoard,
+      ScriptControllers, VolumeMeter, CalibrationControllers, ImageViewers, MediaControllers, Forms
+    },
+    // beforeRouteLeave(to, from, next) {
+    //   // when leaving the page, stop all the media
+    //   const checkLeave = window.confirm("Are you sure you want to leave?");
+    //   if (checkLeave) {
+    //     next();
+    //   } else {
+    //     next(false);
+    //   }
+    // },
+    // beforeRouteUpdate(to, from, next) {
+    //   // when leaving the page, stop all the media
+    //   const checkLeave = window.confirm("Are you sure you want to leave?");
+    //   if (checkLeave) {
+    //     next();
+    //   } else {
+    //     next(false);
+    //   }
+    // },
     setup() {
       // ON CREATED
       // data declaration
@@ -99,13 +154,26 @@ export default defineComponent({
         showMaxBtn: false,
         showVideoBtn: true,
         showTransitionButton: true,
+        showSyncBtn: false,
+        showBeepSyncBtn: false,
+        showDialogSmartphone: false,
+        showDialogVideo: false,
+        showVideoSyncBtn: false,
         // reference img
         isDisplayed: false,
         // volume bars
         isAnimated: false,
         barColor: "blue-gray",
+        // media recordings
+        isMediaRecording: false,
         // scripts
-        conditions: ["normal", "low", "high", "muffled"],
+        // conditionList: ["normal", "low", "high", "muffled"],
+        conditionList: ["normal", "muffled", "high"],
+        conditionProgress: {
+          normal: 0,
+          high: 0,
+          muffled: 0,
+        },
         selectConditions: {state: "normal"},
         tasks: ["ita", "vowel"],
         selectTasks: {state: "ita"},
@@ -116,7 +184,16 @@ export default defineComponent({
         // slide
         currentSlideIndex: 0,
         slideLength: 0,
-        sleepTimeMs: 2000,
+        sleepTimeMs: 100,
+        // server state
+        serverStateJson: {},
+        // Configurations
+        isSyncMode: true,
+        showHealthBoard: true,
+        // osc
+        iosIP: "127.0.0.1",
+        serverIP: "127.0.0.1",
+        serverIPList: ["127.0.0.1"],
       });
       const timeHandler = reactive({
         hour: 0,
@@ -174,6 +251,18 @@ export default defineComponent({
         stateHandler.participant = participant;
       };
 
+      const updateIosIP = (iosIP) => {
+        if (isValidIPv4(iosIP)) {
+          stateHandler.iosIP = iosIP;
+        }
+      };
+
+      const updateServerIP = (serverIP) => {
+        if (isValidIPv4(serverIP)) {
+          stateHandler.serverIP = serverIP;
+        }
+      };
+
       const updateCondition = (condition) => {
         stateHandler.selectConditions.state = condition;
       };
@@ -193,7 +282,7 @@ export default defineComponent({
         };
 
         try {
-          checkExclusive(isNext, isPrev);
+          checkExclusive(isNext, isPrev, true);
         } catch (error) {
           console.log(error);
         }
@@ -319,6 +408,63 @@ export default defineComponent({
         saveUserDataJsonTemp(userDataJson, stateHandler);
       };
 
+      const startSyncRecording = async () => {
+        startMediaRecording(true, false);
+        stateHandler.showSyncBtn = false;
+        await requestStartOscRecording();
+      }
+
+      const startBeepSyncRecording = () => {
+        stateHandler.showDialogSmartphone = true;
+      }
+
+      const stopBeepSyncRecording = () => {
+        stateHandler.showBeepSyncBtn = false
+        stateHandler.showDialogSmartphone = false;
+        stateHandler.showVideoSyncBtn = true;
+      }
+
+      const startSyncVideo = () => {
+        stateHandler.showDialogVideo = true;
+      }
+
+      const stopSyncVideo = () => {
+        stateHandler.showVideoSyncBtn = false;
+      }
+
+      const stopSyncRecording = async () => {
+        stopMediaRecording(true, false);
+        await requestStopOscRecording();
+      }
+
+      const updateSlidePassThroughNext = (event, on) => {
+        const beforeUpdatedSlideIndex = getSlideIndex(stateHandler);
+        updateSlideIndex(beforeUpdatedSlideIndex, true, false);
+        // we do nothing for media manipulation but only for timecode
+        mediaManipulationOverallNext(true);
+        // transit
+        goToNextSlide(event, on);
+        // check if the slide is the last slide
+        if (isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
+          // when {currentSlideIndex === slideLength - 1 === 101} (i.e., "Finish" slide)
+          saveUserDataJson(userDataJson, stateHandler);
+        }
+      }
+
+      const mediaManipulationOverallNext = (isThroughoutCondition = false) => {
+        if (isThroughoutCondition) {
+          // for overall condition, we do not need to manipulate media
+          updateTimecode(getTimeCode(), "start", true, false);
+        } else {
+          // for other conditions, we need to manipulate media
+          if (isLastSlide(stateHandler.currentSlideIndex, true, false, stateHandler.slideLength)) {
+            stopSyncRecording();
+          } else {
+            updateTimecode(getTimeCode(), "start", true, false);
+          }
+        }
+      }
+
       const updateSlideNext = (event, on) => {
         // update script and slide indices
         const beforeUpdatedSlideIndex = getSlideIndex(stateHandler);
@@ -380,7 +526,7 @@ export default defineComponent({
 
       const startMediaRecording = (isNext = false, isPrev = false) => {
         try {
-          checkExclusive(isNext, isPrev);
+          checkExclusive(isNext, isPrev, true);
         } catch (err) {
           console.log(err);
           return;
@@ -396,7 +542,7 @@ export default defineComponent({
 
       const stopMediaRecording = (isNext = false, isPrev = false) => {
         try {
-          checkExclusive(isNext, isPrev);
+          checkExclusive(isNext, isPrev, true);
         } catch (err) {
           console.log(err);
           return;
@@ -410,17 +556,31 @@ export default defineComponent({
         }
       };
 
-      // name setting
+      const loadConditionList = (userDataJson) => {
+        stateHandler.conditionList = userDataJson["data"][getTask(stateHandler)]["conditions"];
+        sendConditionList(stateHandler.conditionList);
+      }
+
       onBeforeMount(async () => {
         // default loading
         const localStorage = window.localStorage;
         const participantCandidate = getLocalStorage(localStorage, "participant");
-
         // take over the existing data
         if (!(participantCandidate === null)) {
           // when cache is valid, set existing name
-          stateHandler.participant = participantCandidate;
+          updateID(participantCandidate);
         }
+        const iosIPCandidate = getLocalStorage(localStorage, "iosIP");
+        if (isValidIPv4(iosIPCandidate)) {
+          // when cache is valid, set existing name
+          updateIosIP(iosIPCandidate);
+        }
+        const serverIPCandidate = getLocalStorage(localStorage, "serverIP");
+        if (isValidIPv4(serverIPCandidate)) {
+          updateServerIP(serverIPCandidate);
+        }
+        // initialize server's state
+        await initializeServerState();
 
         // load json file of user data
         try {
@@ -429,7 +589,19 @@ export default defineComponent({
               // deep copy
               userDataJson["data"] = Object.assign({}, JSON.parse(JSON.stringify(userDataJsonNew)));
               userDataJson = JSON.parse(JSON.stringify(userDataJson));
+              setLocalStorage(localStorage, "userDataJson", JSON.stringify(userDataJson));
             });
+        } catch (err) {
+          console.error(err);
+        }
+
+        // update conditionList
+        loadConditionList(userDataJson);
+
+        // load server's available IP addresses
+        try {
+          const serverIPJson = await loadServerIPJson()
+          stateHandler.serverIPList = makeServerIPList(serverIPJson);
         } catch (err) {
           console.error(err);
         }
@@ -455,9 +627,27 @@ export default defineComponent({
           console.error(e);
         }
 
-        setLocalStorage(localStorage, "participant", stateHandler.participant);
-        setLocalStorage(localStorage, "userDataJson", JSON.stringify(userDataJson));
+        // watch the server state interval
+        setInterval(async () => {
+          // update the server's state
+          // only if window is active
+          if (document.visibilityState === "visible") {
+            stateHandler.serverStateJson = await loadServerStateJson();
+          }
+        }, 100);
       });
+
+      const initializeServerState = async () => {
+        try {
+          await sendParticipant(stateHandler.participant);
+          await sendCondition(stateHandler.selectConditions.state);
+          await sendTask(stateHandler.selectTasks.state);
+          await sendServerIP(stateHandler.serverIP);
+          await sendIosIP(stateHandler.iosIP);
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
       // watchers
       let rerenderNum = ref(0);
@@ -467,8 +657,16 @@ export default defineComponent({
         rerenderNum.value++;
       });
 
+      watch(() => stateHandler.participant, async () => {
+        // update local storage
+        await sendParticipant(stateHandler.participant);
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "participant", stateHandler.participant);
+      });
+
       // when switching the task
-      watch(() => stateHandler.selectTasks.state, () => {
+      watch(() => stateHandler.selectTasks.state, async () => {
+        await sendTask(stateHandler.selectTasks.state);
         // firstly, update script length
         const scriptLength = getScriptLength(stateHandler, userDataJson);
         const slideLength = getSlideLength(stateHandler, userDataJson);
@@ -480,17 +678,83 @@ export default defineComponent({
       });
 
       // when switching the condition
-      watch(() => stateHandler.selectConditions.state, () => {
+      watch(() => stateHandler.selectConditions.state, async () => {
+        await sendCondition(stateHandler.selectConditions.state);
         // initialize script index and slide index
         updateSlideIndex(0);
         // count up to force render
         rerenderNum.value++;
       });
 
+      watch(() => stateHandler.conditionList, () => {
+        if (stateHandler.conditionList.length === 0 && stateHandler.isSyncMode && stateHandler.isMediaRecording) {
+          stopSyncRecording();
+        }
+      }, {deep: true});
+
+      // watch the progress (deep)
+      watch(() => stateHandler.conditionProgress, () => {
+        const condition = getCondition(stateHandler);
+        // if num of script reached the limit, remove the condition from the list
+        if (stateHandler.slideLength - 1 <= stateHandler.conditionProgress[condition]) {
+          // remove condition from the list
+          stateHandler.conditionList = stateHandler.conditionList.filter((item) => item !== condition);
+        }
+        // sleep time should be longer just before the end of slide
+        if (stateHandler.slideLength - 2 <= stateHandler.conditionProgress[condition]) {          // sleep time change
+          stateHandler.sleepTimeMs = 2000;
+        }else {
+          stateHandler.sleepTimeMs = 100;
+        }
+      }, {deep: true});
+
       // watch slide index
       watch(() => stateHandler.currentSlideIndex, () => {
         const {currentScriptNo, currentScriptContent} = getCurrentScriptNoContent(stateHandler, userDataJson);
         updateScriptNoContent(currentScriptNo, currentScriptContent);
+        const condition = getCondition(stateHandler);
+        stateHandler.conditionProgress[condition] = stateHandler.currentSlideIndex;
+      });
+
+      watch(() => stateHandler.currentScriptIndex, () => {
+      });
+
+      // watch IPs and server state
+      watch(() => stateHandler.iosIP, async () => {
+        await sendIosIP(stateHandler.iosIP);
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "iosIP", stateHandler.iosIP);
+      });
+
+      watch(() => stateHandler.serverIP, async () => {
+        await sendServerIP(stateHandler.serverIP);
+        const localStorage = window.localStorage;
+        setLocalStorage(localStorage, "serverIP", stateHandler.serverIP);
+      });
+
+      // watch sync mode
+      watch(() => stateHandler.isSyncMode, () => {
+        if (stateHandler.isSyncMode) {
+          stateHandler.sleepTimeMs = 100;
+        } else {
+          stateHandler.sleepTimeMs = 2000;
+        }
+      });
+
+      // watch audio and video btn
+      watch(() => [stateHandler.showMicBtn, stateHandler.showVideoBtn], () => {
+        // if both are pressed (hidden), show the sync btn
+        stateHandler.showSyncBtn = !stateHandler.showMicBtn && !stateHandler.showVideoBtn;
+      });
+
+      // watch the media stream
+      watch(() => [videoHandler.videoRecorder?.state, waveHandler.waveRecorder?.state], () => {
+        console.log(videoHandler.videoRecorder?.state, waveHandler.waveRecorder?.state);
+        if (videoHandler.videoRecorder.state === "recording" && waveHandler.waveRecorder.state === "recording") {
+          stateHandler.isMediaRecording = true;
+        } else {
+          stateHandler.isMediaRecording = false;
+        }
       });
 
       return {
@@ -502,6 +766,8 @@ export default defineComponent({
         userDataJson,
         rerenderNum,
         updateID,
+        updateIosIP,
+        updateServerIP,
         updateCondition,
         updateTask,
         updateMicParams,
@@ -514,10 +780,17 @@ export default defineComponent({
         updateCalibrationMax,
         updateCalibrationUserData,
         changeTransitionBtnVisibility,
+        startSyncRecording,
+        stopSyncRecording,
+        startSyncVideo,
+        stopSyncVideo,
+        startBeepSyncRecording,
+        stopBeepSyncRecording,
         updateSlideNext,
         updateSlidePrev,
+        updateSlidePassThroughNext,
       };
-    }
+    },
   }
 )
 ;

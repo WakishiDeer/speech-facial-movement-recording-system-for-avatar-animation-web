@@ -52,7 +52,7 @@ export default {
       families: ["Lato:400,700", "Noto+Sans+JP:400,700"]
     }
   },
-  serverMiddleware: ["~/api/server.js"],
+  serverMiddleware: ["~/server/index.js"],
   axios: {
     proxy: true
   },

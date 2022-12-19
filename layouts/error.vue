@@ -6,7 +6,14 @@
     <h1 v-else>
       {{ otherError }}
     </h1>
-    <NuxtLink to="/"> Home page </NuxtLink>
+
+    <v-btn
+      @click="clearStorage"
+    >
+      Clear local storage
+    </v-btn>
+
+    <NuxtLink to="/"> Home page</NuxtLink>
   </v-app>
 </template>
 
@@ -18,6 +25,12 @@ export default {
     error: {
       type: Object,
       default: null,
+    },
+  },
+  methods: {
+    clearStorage() {
+      localStorage.clear();
+      location.reload();
     },
   },
   data() {

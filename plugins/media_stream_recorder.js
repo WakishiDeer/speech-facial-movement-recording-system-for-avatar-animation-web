@@ -87,8 +87,14 @@ export function startVideoRecorder(videoHandler) {
 }
 
 export function stopVideoRecorder(videoHandler, stateHandler) {
-  videoHandler.clipNameCandidate = stateHandler.participant + "!" +
-    stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
+  // change names according to the mode
+  if (stateHandler.isSyncMode) {
+    videoHandler.clipNameCandidate = stateHandler.participant
+  } else {
+    videoHandler.clipNameCandidate = stateHandler.participant + "!" +
+      stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
+  }
+
   videoHandler.videoRecorder.stopRecording(stopRecordingCallback);
 
   function stopRecordingCallback() {
@@ -107,8 +113,12 @@ export function startWaveRecorder(waveHandler) {
 }
 
 export async function stopWaveRecorder(waveHandler, stateHandler) {
-  waveHandler.clipNameCandidate = stateHandler.participant + "!" +
-    stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
+  if (stateHandler.isSyncMode) {
+    waveHandler.clipNameCandidate = stateHandler.participant;
+  } else {
+    waveHandler.clipNameCandidate = stateHandler.participant + "!" +
+      stateHandler.selectConditions.state + "!" + stateHandler.currentScriptNo + "!";
+  }
   waveHandler.waveRecorder.stopRecording(stopRecordingCallback);
 
   function stopRecordingCallback() {

@@ -53,7 +53,7 @@ For the another notable feature, we used `RecordRTC.js` for advanced recording, 
 not support
 WAVE format (see https://recordrtc.org/ and https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder).
 
-On the other hand, there is a back-end system, named `server.js`, localed in `api` directory.
+On the other hand, there is a back-end system, named `index.js`, localed in `api` directory.
 This is written in Node.js with Express.js.
 Basically, this provides APIs for the incoming requests from front-end.
 

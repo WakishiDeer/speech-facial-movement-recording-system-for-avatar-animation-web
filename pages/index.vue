@@ -24,6 +24,7 @@
                                   @update-calibration-min="updateCalibrationMin"
                                   @update-calibration-max="updateCalibrationMax"
                                   @update-calibration-user-data="updateCalibrationUserData"/>
+          {{audioHandler}}
         </v-row>
 
         <v-row justify="center">
@@ -361,18 +362,36 @@ export default defineComponent({
         audioHandler.calibrationCountMax += 1;
       };
 
-      const updateCalibrationMin = (calibrationCountMin, minRms, minRmsAvg, showMinBtn) => {
-        audioHandler.calibrationCountMin = calibrationCountMin;
-        audioHandler.minRms = minRms;
-        audioHandler.minRmsAvg = minRmsAvg;
-        stateHandler.showMinBtn = showMinBtn;
+      const updateCalibrationMin = () => {
+        // note that `calibrationCountMin` is already updated
+        const calibrationCountMin = audioHandler.calibrationCountMin;
+        const calibrationCountTotal = audioHandler.calibrationCountTotal;
+        // default is true
+        stateHandler.showMinBtn = true;
+        if (calibrationCountMin < calibrationCountTotal) {
+          audioHandler.minRms = audioHandler.rmsValue;
+          audioHandler.minRmsAvg += audioHandler.minRms;
+        } else {
+          // when count is over
+          audioHandler.minRmsAvg = audioHandler.minRmsAvg / calibrationCountTotal;
+          stateHandler.showMinBtn = false;
+        }
       };
 
-      const updateCalibrationMax = (calibrationCountMax, maxRms, maxRmsAvg, showMaxBtn) => {
-        audioHandler.calibrationCountMax = calibrationCountMax;
-        audioHandler.maxRms = maxRms;
-        audioHandler.maxRmsAvg = maxRmsAvg;
-        stateHandler.showMaxBtn = showMaxBtn;
+      const updateCalibrationMax = () => {
+        // note that `calibrationCountMax` is already updated
+        const calibrationCountMax = audioHandler.calibrationCountMax;
+        const calibrationCountTotal = audioHandler.calibrationCountTotal;
+        // default is true
+        stateHandler.showMaxBtn = true;
+        if (calibrationCountMax < calibrationCountTotal) {
+          audioHandler.maxRms = audioHandler.rmsValue;
+          audioHandler.maxRmsAvg += audioHandler.maxRms;
+        } else {
+          // over
+          audioHandler.maxRmsAvg = audioHandler.maxRmsAvg / calibrationCountTotal;
+          stateHandler.showMaxBtn = false;
+        }
       };
 
       // update calibration data for userDataJson

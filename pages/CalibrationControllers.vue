@@ -55,31 +55,19 @@ export default defineComponent({
       const onClickCalibrationMin = () => {
         // first, update calibration count
         emit("update-calibration-count-min");
-        const {
-          calibrationCountMin,
-          minRms,
-          minRmsAvg,
-          showMinBtn
-        } = getCalibrationMin(props.audioHandler);
-        emit("update-calibration-min", calibrationCountMin, minRms, minRmsAvg, showMinBtn);
+        emit("update-calibration-min");
         if (props.audioHandler.calibrationCountMin === props.audioHandler.calibrationCountTotal) {
           const updateTarget = "rms_min";
-          onCompletingCalibration(updateTarget, minRmsAvg);
+          onCompletingCalibration(updateTarget, props.audioHandler.minRmsAvg);
         }
       };
       const onClickCalibrationMax = () => {
         // first, update calibration count
         emit("update-calibration-count-max");
-        const {
-          calibrationCountMax,
-          maxRms,
-          maxRmsAvg,
-          showMaxBtn
-        } = getCalibrationMax(props.audioHandler);
-        emit("update-calibration-max", calibrationCountMax, maxRms, maxRmsAvg, showMaxBtn);
+        emit("update-calibration-max");
         if (props.audioHandler.calibrationCountMax === props.audioHandler.calibrationCountTotal) {
           const updateTarget = "rms_max";
-          onCompletingCalibration(updateTarget, maxRmsAvg);
+          onCompletingCalibration(updateTarget, props.audioHandler.maxRmsAvg);
         }
       };
 

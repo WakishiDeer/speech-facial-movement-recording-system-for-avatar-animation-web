@@ -24,7 +24,7 @@
                                   @update-calibration-min="updateCalibrationMin"
                                   @update-calibration-max="updateCalibrationMax"
                                   @update-calibration-user-data="updateCalibrationUserData"/>
-          {{audioHandler}}
+          {{ audioHandler.rmsValue }}
         </v-row>
 
         <v-row justify="center">
@@ -722,7 +722,7 @@ export default defineComponent({
         // sleep time should be longer just before the end of slide
         if (stateHandler.slideLength - 2 <= stateHandler.conditionProgress[condition]) {          // sleep time change
           stateHandler.sleepTimeMs = 2000;
-        }else {
+        } else {
           stateHandler.sleepTimeMs = 100;
         }
       }, {deep: true});

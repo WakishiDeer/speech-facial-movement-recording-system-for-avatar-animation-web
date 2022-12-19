@@ -156,25 +156,19 @@ export function updateState(audioHandler, stateHandler) {
   // update state
   const condition = getCondition(stateHandler);
   if (condition === "muffled") {
-    if (0 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 25) {
-      Vue.set(stateHandler, "barColor", "teal");
-    } else {
-      Vue.set(stateHandler, "barColor", "blue-grey darken-3");
-    }
-  } else if (condition === "low") {
-    if (25 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 50) {
+    if (0 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 33.3) {
       Vue.set(stateHandler, "barColor", "teal");
     } else {
       Vue.set(stateHandler, "barColor", "blue-grey darken-3");
     }
   } else if (condition === "normal") {
-    if (50 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 75) {
+    if (33.3 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 66.6) {
       Vue.set(stateHandler, "barColor", "teal");
     } else {
       Vue.set(stateHandler, "barColor", "blue-grey darken-3");
     }
   } else if (condition === "high") {
-    if (75 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 100) {
+    if (66.6 <= audioHandler.adjustedRmsValue && audioHandler.adjustedRmsValue < 100) {
       Vue.set(stateHandler, "barColor", "teal");
     } else {
       Vue.set(stateHandler, "barColor", "blue-grey darken-3");

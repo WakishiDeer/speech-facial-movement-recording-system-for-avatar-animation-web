@@ -38,7 +38,6 @@
 </template>
 
 <script>
-import {getCalibrationMax, getCalibrationMin} from "~/plugins/audio_handler";
 import {defineComponent} from '@nuxtjs/composition-api'
 
 export default defineComponent({

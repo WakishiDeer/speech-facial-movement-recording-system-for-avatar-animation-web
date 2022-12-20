@@ -14,6 +14,13 @@
         v-model="stateHandler.showHealthBoard"
       />
     </v-col>
+    <v-col>
+      <v-switch
+        :label="`Live Recording`"
+        inset
+        v-model="stateHandler.isLiveRecording"
+      />
+    </v-col>
   </v-row>
 </template>
 

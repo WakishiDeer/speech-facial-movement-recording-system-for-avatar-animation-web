@@ -45,8 +45,6 @@
           <VolumeMeter :audio-handler="audioHandler" :state-handler="stateHandler"/>
         </v-row>
 
-          normal: {{  }}
-          sync: {{  }}
         <v-row>
           <ScriptControllers :key="rerenderNum"
                              :state-handler="stateHandler" :user-data-json="userDataJson"
@@ -190,6 +188,7 @@ export default defineComponent({
         serverStateJson: {},
         // Configurations
         isSyncMode: true,
+        isLiveRecording: false,
         showHealthBoard: true,
         // osc
         iosIP: "127.0.0.1",
@@ -432,7 +431,10 @@ export default defineComponent({
       const startSyncRecording = async () => {
         startMediaRecording(true, false, true);
         stateHandler.showSyncBtn = false;
-        await requestStartOscRecording();
+        // toggle OSC server only when live recording
+        if (stateHandler.isLiveRecording) {
+          await requestStartOscRecording();
+        }
       }
 
       const startBeepSyncRecording = () => {

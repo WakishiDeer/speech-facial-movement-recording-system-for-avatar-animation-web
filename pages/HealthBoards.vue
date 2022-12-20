@@ -1,6 +1,12 @@
 <template>
   <v-card class="justify-center">
     <v-card-text class="text-center">
+      <v-icon :color="liveRecordingColor">
+        mdi-video-input-antenna
+      </v-icon>
+      Live Recording: {{ stateHandler.isLiveRecording ? "ON" : "OFF" }}
+    </v-card-text>
+    <v-card-text class="text-center">
       <v-icon :color="oscServerActivityColor">
         mdi-server
       </v-icon>
@@ -34,9 +40,18 @@ export default defineComponent({
     stateHandler: {},
   },
   setup(props, {emit}) {
+    const liveRecordingColor = ref("grey darken-3");
     let oscServerActivityColor = ref("grey darken-3");
     let oscRecordingColor = ref("grey darken-3");
     let mediaRecordingColor = ref("grey darken-3");
+
+    watch(() => props.stateHandler.isLiveRecording, (isLiveRecording) => {
+      if (isLiveRecording) {
+        liveRecordingColor.value = "blue darken-3";
+      } else {
+        liveRecordingColor.value = "grey darken-3";
+      }
+    });
 
     watch(() => props.stateHandler.serverStateJson["osc-server-active"], (isOscActive) => {
       // change color
@@ -66,6 +81,7 @@ export default defineComponent({
     })
 
     return {
+      liveRecordingColor,
       oscServerActivityColor,
       oscRecordingColor,
       mediaRecordingColor,

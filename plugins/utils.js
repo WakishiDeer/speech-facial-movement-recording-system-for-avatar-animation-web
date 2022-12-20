@@ -65,7 +65,7 @@ export function encloseStatusMessagePost(statusCode) {
 }
 
 export function isRmsMinMaxValid(rmsMin, rmsMax) {
-  return rmsMin < rmsMax;
+  return rmsMin <= rmsMax;
 }
 
 export function isRmsZero(rms) {

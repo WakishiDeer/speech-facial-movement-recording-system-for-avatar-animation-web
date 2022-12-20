@@ -24,7 +24,6 @@
                                   @update-calibration-min="updateCalibrationMin"
                                   @update-calibration-max="updateCalibrationMax"
                                   @update-calibration-user-data="updateCalibrationUserData"/>
-          {{audioHandler}}
         </v-row>
 
         <v-row justify="center">
@@ -44,7 +43,6 @@
 
         <v-row>
           <VolumeMeter :audio-handler="audioHandler" :state-handler="stateHandler"/>
-          {{ audioHandler.rmsValue }}
         </v-row>
 
         <v-row>
@@ -190,6 +188,7 @@ export default defineComponent({
         serverStateJson: {},
         // Configurations
         isSyncMode: true,
+        isLiveRecording: false,
         showHealthBoard: true,
         // osc
         iosIP: "127.0.0.1",
@@ -416,21 +415,26 @@ export default defineComponent({
           if (!isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength)) {
             userDataJson["data"][task][condition]["timecode_" + type][updatedScriptIndex] = timecode;
           }
-        } else {
+        } else if (type === "stop") {
           if (isLastSlide(updatedSlideIndex, isNext, isPrev, slideLength)) {
             userDataJson["data"][task][condition]["timecode_" + type][updatedScriptIndex] = timecode;
           } else {
             userDataJson["data"][task][condition]["timecode_" + type][updatedScriptIndex - 1] = timecode;
           }
+        } else if (type === "sync") {
+          userDataJson["data"]["timecode_" + type] = timecode;
         }
         // post temporary data
         saveUserDataJsonTemp(userDataJson, stateHandler);
       };
 
       const startSyncRecording = async () => {
-        startMediaRecording(true, false);
+        startMediaRecording(true, false, true);
         stateHandler.showSyncBtn = false;
-        await requestStartOscRecording();
+        // toggle OSC server only when live recording
+        if (stateHandler.isLiveRecording) {
+          await requestStartOscRecording();
+        }
       }
 
       const startBeepSyncRecording = () => {
@@ -543,7 +547,7 @@ export default defineComponent({
         }
       };
 
-      const startMediaRecording = (isNext = false, isPrev = false) => {
+      const startMediaRecording = (isNext = false, isPrev = false, isSyncBtn = false) => {
         try {
           checkExclusive(isNext, isPrev, true);
         } catch (err) {
@@ -552,8 +556,13 @@ export default defineComponent({
         }
 
         if (videoHandler.videoRecorder !== null && waveHandler.waveRecorder !== null) {
+          if (isSyncBtn) {
+            // if sync button pressed, set timecode separately
+            updateTimecode(getTimeCode(), "sync", isNext, isPrev);
+          } else {
+            updateTimecode(getTimeCode(), "start", isNext, isPrev);
+          }
           // start recording
-          updateTimecode(getTimeCode(), "start", isNext, isPrev);
           startVideoRecorder(videoHandler);
           startWaveRecorder(waveHandler);
         }
@@ -722,7 +731,7 @@ export default defineComponent({
         // sleep time should be longer just before the end of slide
         if (stateHandler.slideLength - 2 <= stateHandler.conditionProgress[condition]) {          // sleep time change
           stateHandler.sleepTimeMs = 2000;
-        }else {
+        } else {
           stateHandler.sleepTimeMs = 100;
         }
       }, {deep: true});

@@ -239,7 +239,8 @@ app.post("/api/saveJsonTemp", async (req, res) => {
 // use `multer` to save "multipart/from-data"
 app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
   try {
-    res.send("Media has been saved successfully...");
+    const ext = req.headers.extension;
+    res.status(200).send("Media has been saved...: " + ext);
   } catch (err) {
     console.error(err);
     res.status(500).send("error");

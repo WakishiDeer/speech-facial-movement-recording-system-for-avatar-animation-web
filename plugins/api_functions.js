@@ -147,12 +147,22 @@ export async function postBlob(blob, extension, clipNameCandidate, stateHandler)
   const headers = {
     "participant": stateHandler.participant,
     "extension": extension,
+    "content-type": "multipart/form-data",
   }
 
-  axios.post(url, formData, {
+  await axios.post(url, formData, {
     headers: headers
   })
     .then(res => {
       console.log(res);
+      if (res.status === 200) {
+        // pop up a message
+        alert("The file has been saved successfully: " + res.data);
+      }
     })
+    .catch(
+      err => {
+        console.log(err);
+      }
+    )
 }

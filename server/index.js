@@ -1,8 +1,11 @@
 const osc = require("osc");
 const path = require("path");
+const pino = require("pino");
+
 
 // logging for memory
 const logIntervalTime = 1000;  // per 1 second
+
 // file name with time
 function getDateTimeString() {
   // datetime with ISOString in Japan
@@ -10,7 +13,8 @@ function getDateTimeString() {
   date.setHours(date.getHours() + 9);
   return date.toISOString().replace(/:/g, "-");
 }
-const saveLogPath = path.join(__dirname, "log", "memory_" + getDateTimeString() + ".log");
+
+const saveMemoryLogPath = path.join(__dirname, "log", "memory_" + getDateTimeString() + ".log");
 
 function emitLog() {
   const used = process.memoryUsage();
@@ -20,18 +24,35 @@ function emitLog() {
   }
   // print time and memory usage
   const message = `${new Date().toLocaleTimeString()} - ${messages.join(", ")}`;
-  console.log(message);
+  logger.info(message);
   // add memory usage to log file
   try {
-    fs.appendFile(saveLogPath, message + "\n", (err) => {
+    fs.appendFile(saveMemoryLogPath, message + "\n", (err) => {
       if (err) throw err;
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
   }
 }
 
 setInterval(emitLog, logIntervalTime);
+
+// pino settings
+const logger = pino({
+  // use getDateTimeString() to get time with ISOString
+  timestamp: () => `,"time":"${getDateTimeString()}"`,
+  level: "info",
+  transport: {
+    // save log to file
+    target: "pino/file",
+    options: {
+      // log file name
+      destination: path.join(__dirname, "log", "server_" + getDateTimeString() + ".log"),
+      // log file size
+      maxLogSize: 1000000000,
+    },
+  }
+});
 
 // state management
 let serverStateJson = {
@@ -89,7 +110,7 @@ function initializeUDPPort(address, port, remoteAddress) {
 }
 
 function sendMessage(addrArgs) {
-  console.log(addrArgs);
+  logger.info(addrArgs);
   oscClient.send(addrArgs);
 }
 
@@ -185,7 +206,7 @@ function startOscServer() {
         updateServerState("is-recording", false);
         break;
       default:
-        console.log(oscMsg);
+        logger.info(oscMsg);
         break;
     }
   });
@@ -201,7 +222,7 @@ function startOscServer() {
   });
 
   oscClient.on("error", (err) => {
-    console.error(err);
+    logger.error(err);
   });
 }
 
@@ -240,7 +261,7 @@ app.use(bodyParser.json({}));
 
 // api
 app.listen(serverStateJson["api-port"], () => {
-  console.log("Start listening api...");
+  logger.info("Start listening api...");
 });
 
 
@@ -251,7 +272,7 @@ app.post("/api/saveJson", async (req, res) => {
     await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -264,7 +285,7 @@ app.post("/api/saveJsonTemp", async (req, res) => {
     await writeJsonFile(filePath, req);
     res.status(200).send("User data has been saved...: " + JSON.stringify(req.body));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 })
@@ -275,7 +296,7 @@ app.post("/api/saveMedia", upload.single("file"), async (req, res) => {
     const ext = req.headers.extension;
     res.status(200).send("Media has been saved...: " + ext);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -285,13 +306,13 @@ app.post("/api/updateIosIP", async (req, res) => {
     const iosIP = req.body["ios-ip"];
     if (isNotLocalHostAddress(iosIP)) {
       updateServerState("ios-ip", iosIP);
-      console.info("ios IP has been updated: " + iosIP);
+      logger.info("ios IP has been updated: " + iosIP);
       res.status(200).send("iOS IP has been updated successfully...: " + iosIP);
     } else {
       res.status(204).send("iOS IP is invalid: " + iosIP);
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -301,26 +322,26 @@ app.post("/api/updateServerIP", async (req, res) => {
     const hostIP = req.body["server-ip"];
     if (isNotLocalHostAddress(hostIP)) {
       updateServerState("server-ip", hostIP);
-      console.info("server IP has been updated: " + hostIP);
+      logger.info("server IP has been updated: " + hostIP);
     } else {
       // initialize osc server
       res.send("Server IP Address has been updated successfully...: " + hostIP);
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
 
 app.post("/api/updateParticipant", async (req, res) => {
   try {
-    console.log("update participant");
+    logger.info("update participant");
     const participant = req.body["participant"];
     updateServerState("participant", participant);
     // initialize osc server
     res.send("Participant has been updated successfully...: " + participant);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -332,7 +353,7 @@ app.post("/api/updateCondition", async (req, res) => {
     // initialize osc server
     res.send("Condition has been updated successfully...: " + condition);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -342,7 +363,7 @@ app.post("/api/updateConditionList", async (req, res) => {
     // deep copy
     conditionList = JSON.parse(JSON.stringify(req.body["condition-list"]));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -354,7 +375,7 @@ app.post("/api/updateTask", async (req, res) => {
     // initialize osc server
     res.send("Task has been updated successfully...: " + task);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -364,7 +385,7 @@ app.post("/api/startOscRecording", (req, res) => {
     startRecording();
     res.send("OSC recording has been started...");
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -374,7 +395,7 @@ app.post("/api/stopOscRecording", (req, res) => {
     stopRecording();
     res.send("OSC recording has been stopped...");
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -385,9 +406,9 @@ app.get("/api/loadJson", async (req, res) => {
     const userData = fs.readFileSync(filePath, "utf-8");
     // if valid data, return it as success
     res.status(200).json(JSON.parse(userData));
-    console.log("User data has been sent to client");
+    logger.info("User data has been sent to client");
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     // if error and just not existing, return empty data as status
     if (err.code === "ENOENT") {
       res.status(204).json(JSON.parse("{}"));
@@ -403,7 +424,7 @@ app.get("/api/getServerIPJson", async (req, res) => {
     res.status(200).json(ipAddressJson);
   } catch (err) {
 
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -413,7 +434,7 @@ app.get("/api/getServerStateJson", async (req, res) => {
     const serverStateJson = getServerStateJson();
     res.status(200).json(serverStateJson);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send("error");
   }
 });
@@ -441,7 +462,7 @@ async function isReachable(ipAddress, port) {
       return true;
     })
     .catch((err) => {
-      console.error(err);
+      logger.error(err);
       return false;
     });
 }
@@ -484,7 +505,7 @@ function getUserDataDirPath(userDataRootPath, participant, isTemp) {
 async function writeJsonFile(filePath, req) {
   // handle saving json data
   fs.writeFileSync(filePath, JSON.stringify(req.body));
-  console.log("User data has been saved at: " + filePath);
+  logger.info("User data has been saved at: " + filePath);
 }
 
 

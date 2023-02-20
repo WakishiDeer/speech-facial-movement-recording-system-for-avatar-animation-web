@@ -1,6 +1,39 @@
 const osc = require("osc");
 const path = require("path");
 
+// logging for memory
+const logIntervalTime = 1000;  // per 1 second
+// file name with time
+function getDateTimeString() {
+  // datetime with ISOString in Japan
+  const date = new Date();
+  date.setHours(date.getHours() + 9);
+  return date.toISOString().replace(/:/g, "-");
+}
+const saveLogPath = path.join(__dirname, "log", "memory_" + getDateTimeString() + ".log");
+
+function emitLog() {
+  const used = process.memoryUsage();
+  const messages = [];
+  for (let key in used) {
+    messages.push(`${key} - ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`);
+  }
+  // print time and memory usage
+  const message = `${new Date().toLocaleTimeString()} - ${messages.join(", ")}`;
+  console.log(message);
+  // add memory usage to log file
+  try {
+    fs.appendFile(saveLogPath, message + "\n", (err) => {
+      if (err) throw err;
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+setInterval(emitLog, logIntervalTime);
+
+// state management
 let serverStateJson = {
   "osc-server-active": false,
   "participant": "",

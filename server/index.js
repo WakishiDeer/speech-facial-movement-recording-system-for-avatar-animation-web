@@ -1,6 +1,7 @@
 const osc = require("osc");
 const path = require("path");
 const pino = require("pino");
+const fs = require("fs");
 
 
 // logging for memory
@@ -14,7 +15,8 @@ function getDateTimeString() {
   return date.toISOString().replace(/:/g, "-");
 }
 
-const saveMemoryLogPath = path.join(__dirname, "log", "memory_" + getDateTimeString() + ".log");
+const saveMemoryLogDirPath = path.join(__dirname, "log");
+const saveMemoryLogPath = path.join(saveMemoryLogDirPath, "memory_" + getDateTimeString() + ".log");
 
 function emitLog() {
   const used = process.memoryUsage();
@@ -52,6 +54,11 @@ const logger = pino({
       maxLogSize: 1000000000,
     },
   }
+});
+
+// mkdir for log folder
+fs.mkdir(saveMemoryLogDirPath, (err) => {
+  logger.error(err);
 });
 
 // state management
@@ -231,7 +238,6 @@ function startOscServer() {
 const app = require("express")();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const fs = require("fs");
 const multer = require("multer");
 
 let conditionList = [];
